@@ -306,33 +306,142 @@ npm run build
 
 ---
 
-## Hackathon Demo Walkthrough (For Judges)
+## Demo Walkthrough
 
-1. **Overview Dashboard:** Review the top-level financial metrics and notice the clear separation between **Revenue at Risk**, **Expected Recovery**, and **Verified Recovered Revenue**.
-2. **Explore the Pipeline:** View the 7-stage operational pipeline tracking cases from failure detection to verified recovery.
-3. **Open the Recovery Queue:** Filter by scenario (e.g. *Payment Failure*, *Subscription*, *Receivable*) to see multi-scenario coverage.
-4. **Inspect the Hero Case (`case_aarav_hero`):**
-   - Review the failure reason: *"Temporary network timeout"*.
-   - Check the mathematical scoring: **78% Probability → ₹9,750 Expected Recovery**.
-   - Review the **Operational Decision Trace** showing policy approval.
-5. **Execute Recovery:**
-   - Click **"Create Recovery Payment"** to generate the Razorpay test order.
-   - Click **"Pay ₹12,500"** to trigger the Razorpay test payment modal.
-6. **Verify Revenue Recovery:**
-   - Complete the test payment.
-   - The page updates to the green **"Payment Recovered"** celebration banner.
-   - Verify that **₹12,500** has moved into **Recovered Revenue**.
-7. **Inspect Bounded Autonomy (Priya Kapoor - `case_priya_fail`):**
-   - High-value ₹84,000 transaction with insufficient funds.
-   - Observe that RecoverX **halts automated retries** and escalates to **Manual Review** because policy limits were reached.
-8. **Test Customer Intent Handling (Acme Industries - `case_acme_b2b`):**
-   - Select **"Already Paid"** and see the UI transition cleanly to **"Payment Verification Required"**.
-   - Check that duplicate clicks do not spam the audit trail.
-   - Verify that **recovered revenue does not increase** without confirmed payment capture.
-9. **Review Audit Log:** Open `/audit` to verify the complete, human-readable traceability for every action taken.
-10. **Merchant Policy Settings:** Visit `/settings` to view and adjust policy guardrails.
+See RecoverX detect revenue at risk, make a bounded recovery decision, execute recovery through Razorpay, and verify actual recovered revenue.
 
----
+### 1. Overview
+
+Start on the Overview dashboard.
+
+Review the key financial metrics:
+
+- Revenue at Risk
+- Expected Recovery Value
+- Actual Recovered Revenue
+- Active Opportunities
+
+The recovery pipeline shows how RecoverX moves from a revenue-risk event to a verified recovery outcome.
+
+### 2. Recovery Queue
+
+Open the **Revenue Recovery Queue** to view prioritized recovery opportunities.
+
+Filter opportunities by scenario, including:
+
+- Payment Failure
+- Checkout Drop-off
+- Subscription Failure
+- Mandate Failure
+- Receivable
+
+Opportunities are prioritized using Expected Recovery Value rather than simply sorting by transaction size.
+
+### 3. Hero Recovery Case
+
+Open the primary payment-recovery case.
+
+Review:
+
+- **Amount at Risk:** ₹12,500
+- **Diagnosis:** Temporary network timeout
+- **Recovery Probability:** 78%
+- **Expected Recovery Value:** ₹9,750
+- **Recommended Intervention:** Create Recovery Payment
+
+The case also shows the operational decision trace, including diagnosis, scoring, intervention selection, and merchant policy approval.
+
+### 4. Execute Recovery
+
+Select **Create Recovery Payment**.
+
+RecoverX creates a new Razorpay Test Mode recovery order for the full original amount.
+
+The case then moves to **Recovering** and presents the customer with:
+
+**Pay ₹12,500**
+
+The Razorpay Checkout experience opens directly inside RecoverX.
+
+### 5. Verify Recovery
+
+Complete the Razorpay Test Mode payment.
+
+RecoverX does not treat order creation or a frontend success callback as recovered revenue.
+
+Instead, the existing `payment.captured` webhook confirms the payment and transitions the case to **Recovered**.
+
+Verify:
+
+- Payment Captured
+- Recovery Confirmed by Webhook
+- Actual Recovered Revenue = ₹12,500
+
+### 6. Bounded Autonomy
+
+Open a high-risk recovery opportunity such as the ₹84,000 Priya Kapoor case.
+
+Review the recovery probability and merchant policy.
+
+When policy boundaries are reached, RecoverX stops automated recovery and sends the opportunity to **Manual Review** rather than retrying indefinitely.
+
+This demonstrates:
+
+- Maximum Attempts
+- Cooldown
+- Recovery Window
+- Escalation Threshold
+- Policy-based stopping
+
+### 7. Customer Intent Handling
+
+Open the Acme Industries receivable opportunity.
+
+Select **Already Paid**.
+
+RecoverX records the customer intent and moves the case to:
+
+**Payment Verification Required**
+
+The customer response does not automatically increase recovered revenue.
+
+Recovered revenue is only recorded after an actual payment is confirmed.
+
+Repeated identical customer-intent clicks are handled without unnecessarily duplicating the audit trail.
+
+### 8. Multi-Scenario Recovery
+
+Use **Simulate Revenue Event** to explore the other supported revenue-risk scenarios:
+
+- Payment Failure
+- Checkout Drop-off
+- Subscription Failure
+- Mandate Failure
+- Overdue Invoice
+
+Each scenario enters the same Recovery Engine flow:
+
+**Detect → Diagnose → Score → Select Intervention → Apply Policy → Execute → Verify → Recover**
+
+Where customer payment or external confirmation is required, RecoverX does not mark the opportunity as recovered until the outcome is actually confirmed.
+
+### 9. Audit Trail
+
+Open the **Audit Log** to trace the complete recovery lifecycle.
+
+Typical events include:
+
+```text
+Recovery Detected
+Diagnosis Completed
+Recovery Scored
+Intervention Recommended
+Policy Checked
+Action Approved / Action Blocked
+Action Executed
+Recovery Payment Created
+Payment Captured
+Recovery Completed
 
 ## License
 
