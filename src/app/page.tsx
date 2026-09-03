@@ -47,6 +47,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* SECTION 1 — FINANCIAL SUMMARY */}
+      {/* SECTION 1 — FINANCIAL SUMMARY */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -59,24 +60,36 @@ export default async function DashboardPage() {
             ) : (
               <div className="text-2xl font-bold text-slate-900">{formatINR(metrics.revenueAtRisk, true)}</div>
             )}
+            <p className="text-[11px] text-slate-400 mt-1">{metrics.activeCases} active recovery cases</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Expected Recovery Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-slate-400" />
+            <CardTitle className="text-sm font-medium text-slate-600">Expected Incremental Recovery</CardTitle>
+            <TrendingUp className="h-4 w-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
-            {metrics.expectedRecovery === 0 ? (
-              <div className="text-2xl font-bold text-slate-900">₹0</div>
-            ) : (
-              <div className="text-2xl font-bold text-slate-900">{formatINR(metrics.expectedRecovery, true)}</div>
-            )}
+            <div className="text-2xl font-bold text-indigo-600">
+              {formatINR(metrics.expectedIncrementalRecoveryValue || metrics.expectedRecovery, true)}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">Lift above natural baseline</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Recovered Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">Expected Net Recovery Value</CardTitle>
+            <Activity className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-700">
+              {formatINR(metrics.expectedNetRecoveryValue || metrics.expectedRecovery, true)}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">Net of estimated intervention costs</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Actual Recovered Revenue</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
@@ -85,18 +98,31 @@ export default async function DashboardPage() {
             ) : (
               <div className="text-2xl font-bold text-emerald-700">{formatINR(metrics.recoveredRevenue, true)}</div>
             )}
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Active Cases</CardTitle>
-            <Activity className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{metrics.activeCases}</div>
+            <p className="text-[11px] text-emerald-600 font-medium mt-1">Confirmed captured payments</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* RECOVERY DECISION MIX BANNER */}
+      {metrics.decisionMix && (
+        <div className="bg-white border border-slate-200 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Recovery Decision Mix:</span>
+            <span className="text-xs text-slate-500">Autonomous economic policy guardrails active</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs bg-emerald-50 text-emerald-800 font-bold px-2.5 py-1 rounded border border-emerald-200">
+              ACT: {metrics.decisionMix.act}
+            </span>
+            <span className="text-xs bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded border border-slate-300">
+              ABSTAIN: {metrics.decisionMix.abstain}
+            </span>
+            <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2.5 py-1 rounded border border-amber-200">
+              ESCALATE: {metrics.decisionMix.escalate}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* LEFT COLUMN */}
@@ -188,34 +214,46 @@ export default async function DashboardPage() {
                 {priorityCases.slice(0, 5).map((c) => (
                   <Link href={`/recovery/${c.id}`} key={c.id} className="block group">
                     <div className="flex flex-col md:flex-row md:items-center justify-between rounded-md border border-slate-200 bg-white p-4 group-hover:border-slate-300 transition-colors">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full">
                         <div className="flex flex-col justify-center">
                           <p className="text-sm font-semibold text-slate-900">{c.customerName}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{c.issue}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">{c.issue}</p>
                         </div>
                         <div className="flex flex-col justify-center">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-slate-500 w-8">Risk:</span>
-                            <span className="text-sm font-medium text-slate-900">{formatINR(c.amount)}</span>
+                            <span className="text-xs font-medium text-slate-500">Risk:</span>
+                            <span className="text-sm font-semibold text-slate-900">{formatINR(c.amount)}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs font-medium text-slate-500 w-8">Prob:</span>
-                            <span className="text-xs font-medium text-slate-700">{Math.round(c.probability * 100)}%</span>
+                            <span className="text-xs font-medium text-slate-500">Lift:</span>
+                            <span className="text-xs font-bold text-emerald-700">+{Math.round((c.incrementalLift || 0) * 100)}pp</span>
                           </div>
                         </div>
+                        <div className="flex flex-col justify-center">
+                          <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-0.5">Expected Net</p>
+                          <p className="text-sm font-bold text-indigo-600">{formatINR(c.expectedNetRecovery || c.expectedRecovery)}</p>
+                          <span className="text-[10px] text-slate-400">Gross: {formatINR(c.expectedRecovery)}</span>
+                        </div>
                         <div className="flex flex-col justify-center md:items-end">
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Expected</p>
-                          <p className="text-sm font-semibold text-emerald-700 mb-2">{formatINR(c.expectedRecovery)}</p>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                              c.decision === 'ACT' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                              c.decision === 'ABSTAIN' ? 'bg-slate-100 text-slate-700 border-slate-300' :
+                              'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}>
+                              {c.decision}
+                            </span>
+                          </div>
                           <div className="flex items-center gap-1.5">
                             {c.status === 'recovered' ? (
                               <>
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Recovered</span>
                               </>
                             ) : (
                               <>
                                 <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'ready' ? 'bg-indigo-500' : c.status === 'recovering' ? 'bg-amber-400' : 'bg-slate-300'}`} />
-                                <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">{c.status}</span>
+                                <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider capitalize">{c.status}</span>
                               </>
                             )}
                           </div>

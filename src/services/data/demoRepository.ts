@@ -100,8 +100,16 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'HERO_PAYMENT_RECOVERY', customerName: 'Aarav Sharma' },
       policy: defaultPolicy,
       
+      estimatedBaselineRecoveryProbability: 0.24,
+      baselineRecoveryProbability: 0.24,
       recoveryProbability: 0.78,
+      incrementalLift: 0.54,
       expectedRecovery: 9750,
+      expectedIncrementalRecoveryValue: 6750,
+      estimatedInterventionCost: 10,
+      expectedNetRecoveryValue: 6740,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
       riskLevel: 'Medium',
       recommendedAction: 'create_recovery_payment',
       diagnosis: 'Temporary Payment Failure',
@@ -120,14 +128,50 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'BOUNDED_RETRY_FAILURE', customerName: 'Priya Kapoor' },
       policy: { ...defaultPolicy, name: 'High Value Strict Policy' },
       
+      estimatedBaselineRecoveryProbability: 0.08,
+      baselineRecoveryProbability: 0.08,
       recoveryProbability: 0.18,
+      incrementalLift: 0.10,
       expectedRecovery: 15120,
+      expectedIncrementalRecoveryValue: 8400,
+      estimatedInterventionCost: 50,
+      expectedNetRecoveryValue: 8350,
+      decision: 'ESCALATE',
+      decisionReason: 'Amount at risk (₹84,000) exceeds automated escalation threshold (₹50,000).',
       riskLevel: 'Critical',
       recommendedAction: 'manual_review',
       diagnosis: 'Hard Payment Failure',
     };
 
-    // 3. Recovered Case (Successful Recovery)
+    // 3. Low-Value / Low-Lift Opportunity -> ABSTAIN
+    this.cases['case_vikram_abstain'] = {
+      id: 'case_vikram_abstain',
+      status: 'ready',
+      type: 'payment_failure',
+      amountAtRisk: 5000,
+      attemptCount: 0,
+      createdAt: new Date(Date.now() - 7200000), // 2 hours ago
+      customerHistory: { previousSuccesses: 8, previousFailures: 1 },
+      paymentDetails: { failureReason: 'Card security check delay' },
+      metadata: { scenario: 'ECONOMIC_ABSTAIN', customerName: 'Vikram Malhotra' },
+      policy: defaultPolicy,
+      
+      estimatedBaselineRecoveryProbability: 0.72,
+      baselineRecoveryProbability: 0.72,
+      recoveryProbability: 0.74,
+      incrementalLift: 0.02,
+      expectedRecovery: 3700,
+      expectedIncrementalRecoveryValue: 100,
+      estimatedInterventionCost: 150,
+      expectedNetRecoveryValue: -50,
+      decision: 'ABSTAIN',
+      decisionReason: 'The estimated incremental recovery value does not justify the intervention cost.',
+      riskLevel: 'Low',
+      recommendedAction: 'create_recovery_payment',
+      diagnosis: 'Temporary Payment Failure',
+    };
+
+    // 4. Recovered Case (Successful Recovery)
     this.cases['case_karan_success'] = {
       id: 'case_karan_success',
       status: 'recovered',
@@ -140,15 +184,23 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'SUCCESSFUL_RECOVERY', customerName: 'Karan Patel' },
       policy: defaultPolicy,
       
+      estimatedBaselineRecoveryProbability: 0.30,
+      baselineRecoveryProbability: 0.30,
       recoveryProbability: 0.95,
+      incrementalLift: 0.65,
       expectedRecovery: 4749,
+      expectedIncrementalRecoveryValue: 3249,
+      estimatedInterventionCost: 10,
+      expectedNetRecoveryValue: 3239,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
       riskLevel: 'Low',
       recommendedAction: 'create_recovery_payment',
       diagnosis: 'Temporary Payment Failure',
       lastActionAt: new Date(Date.now() - 80000000),
     };
 
-    // 4. Stopped Case (Policy Stopping Rule)
+    // 5. Stopped Case (Policy Stopping Rule)
     this.cases['case_neha_stopped'] = {
       id: 'case_neha_stopped',
       status: 'stopped',
@@ -161,15 +213,23 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'MAX_ATTEMPTS_REACHED', customerName: 'Neha Gupta' },
       policy: defaultPolicy,
       
+      estimatedBaselineRecoveryProbability: 0.05,
+      baselineRecoveryProbability: 0.05,
       recoveryProbability: 0.05,
-      expectedRecovery: 74,
+      incrementalLift: 0.00,
+      expectedRecovery: 75,
+      expectedIncrementalRecoveryValue: 0,
+      estimatedInterventionCost: 0,
+      expectedNetRecoveryValue: 0,
+      decision: 'ABSTAIN',
+      decisionReason: 'Maximum attempts (2) reached. Automation stopped by merchant policy.',
       riskLevel: 'High',
       recommendedAction: 'stop_recovery',
       diagnosis: 'Hard Payment Failure',
       lastActionAt: new Date(Date.now() - 170000000),
     };
 
-    // 5. Checkout Drop-off -> Pending
+    // 6. Checkout Drop-off -> Pending
     this.cases['case_riya_checkout'] = {
       id: 'case_riya_checkout',
       status: 'ready',
@@ -181,14 +241,22 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'CHECKOUT_DROPOFF', customerName: 'Riya Mehta' },
       policy: defaultPolicy,
       
+      estimatedBaselineRecoveryProbability: 0.20,
+      baselineRecoveryProbability: 0.20,
       recoveryProbability: 0.65,
+      incrementalLift: 0.45,
       expectedRecovery: 5525,
+      expectedIncrementalRecoveryValue: 3825,
+      estimatedInterventionCost: 20,
+      expectedNetRecoveryValue: 3805,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
       riskLevel: 'Low',
       recommendedAction: 'send_checkout_recovery',
       diagnosis: 'Checkout Drop-off',
     };
 
-    // 6. Subscription Failure -> Recovered
+    // 7. Subscription Failure -> Recovered
     this.cases['case_amit_sub'] = {
       id: 'case_amit_sub',
       status: 'recovered',
@@ -201,15 +269,23 @@ export class DemoRepository implements RecoveryRepository {
       metadata: { scenario: 'SUBSCRIPTION_RETRY', customerName: 'Amit Singh' },
       policy: defaultPolicy,
       
+      estimatedBaselineRecoveryProbability: 0.35,
+      baselineRecoveryProbability: 0.35,
       recoveryProbability: 0.85,
+      incrementalLift: 0.50,
       expectedRecovery: 1699,
+      expectedIncrementalRecoveryValue: 1000,
+      estimatedInterventionCost: 0,
+      expectedNetRecoveryValue: 1000,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
       riskLevel: 'Low',
       recommendedAction: 'retry_subscription',
       diagnosis: 'Subscription Payment Failure',
       lastActionAt: new Date(Date.now() - 250000000),
     };
 
-    // 7. B2B Receivable -> Promise to Pay
+    // 8. B2B Receivable -> Promise to Pay
     this.cases['case_acme_b2b'] = {
       id: 'case_acme_b2b',
       status: 'recovering', // Awaiting promise fulfillment
@@ -223,8 +299,16 @@ export class DemoRepository implements RecoveryRepository {
       hasPromiseToPay: true,
       promiseStatus: 'promised',
       
+      estimatedBaselineRecoveryProbability: 0.40,
+      baselineRecoveryProbability: 0.40,
       recoveryProbability: 0.90,
+      incrementalLift: 0.50,
       expectedRecovery: 112500,
+      expectedIncrementalRecoveryValue: 62500,
+      estimatedInterventionCost: 0,
+      expectedNetRecoveryValue: 62500,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
       riskLevel: 'Low',
       recommendedAction: 'start_promise_to_pay',
       diagnosis: 'Overdue Receivable',
@@ -236,16 +320,32 @@ export class DemoRepository implements RecoveryRepository {
     // Audits for Hero Case
     this.audits.push({ id: `evt_${now}_1`, caseId: 'case_aarav_hero', eventType: 'RECOVERY_DETECTED', description: 'Recovery opportunity detected for ₹12,500', createdAt: new Date(now - 10000) });
     this.audits.push({ id: `evt_${now}_2`, caseId: 'case_aarav_hero', eventType: 'DIAGNOSIS_COMPLETED', description: 'Diagnosis: Temporary Payment Failure', createdAt: new Date(now - 8000) });
-    this.audits.push({ id: `evt_${now}_3`, caseId: 'case_aarav_hero', eventType: 'RECOVERY_SCORED', description: 'Recovery Probability: 78% | Expected Recovery Value: ₹9,750', createdAt: new Date(now - 6000) });
+    this.audits.push({ id: `evt_${now}_2a`, caseId: 'case_aarav_hero', eventType: 'BASELINE_SCORED', description: 'Estimated Natural Recovery Probability: 24%', createdAt: new Date(now - 7000) });
+    this.audits.push({ id: `evt_${now}_2b`, caseId: 'case_aarav_hero', eventType: 'INTERVENTION_SCORED', description: 'Estimated Recovery Probability with Intervention: 78%', createdAt: new Date(now - 6500) });
+    this.audits.push({ id: `evt_${now}_3`, caseId: 'case_aarav_hero', eventType: 'INCREMENTAL_VALUE_CALCULATED', description: 'Estimated Incremental Lift: +54pp | Expected Incremental Recovery Value: ₹6,750', createdAt: new Date(now - 6000) });
+    this.audits.push({ id: `evt_${now}_3a`, caseId: 'case_aarav_hero', eventType: 'INTERVENTION_COST_EVALUATED', description: 'Estimated Intervention Cost: ₹10', createdAt: new Date(now - 5500) });
+    this.audits.push({ id: `evt_${now}_3b`, caseId: 'case_aarav_hero', eventType: 'DECISION_ACT', description: 'Expected Net Recovery Value: ₹6,740', createdAt: new Date(now - 5000) });
     this.audits.push({ id: `evt_${now}_4`, caseId: 'case_aarav_hero', eventType: 'INTERVENTION_RECOMMENDED', description: 'Recommended Intervention: Create Recovery Payment', createdAt: new Date(now - 4000) });
     this.audits.push({ id: `evt_${now}_4a`, caseId: 'case_aarav_hero', eventType: 'POLICY_APPROVED', description: 'Policy check passed. Action allowed.', createdAt: new Date(now - 2000) });
+
+    // Audits for Vikram Case (ABSTAIN)
+    this.audits.push({ id: `evt_${now}_4b`, caseId: 'case_vikram_abstain', eventType: 'RECOVERY_DETECTED', description: 'Recovery opportunity detected for ₹5,000', createdAt: new Date(now - 7200000) });
+    this.audits.push({ id: `evt_${now}_4c`, caseId: 'case_vikram_abstain', eventType: 'DIAGNOSIS_COMPLETED', description: 'Diagnosis: Temporary Payment Failure', createdAt: new Date(now - 7198000) });
+    this.audits.push({ id: `evt_${now}_4d`, caseId: 'case_vikram_abstain', eventType: 'BASELINE_SCORED', description: 'Estimated Natural Recovery Probability: 72%', createdAt: new Date(now - 7196000) });
+    this.audits.push({ id: `evt_${now}_4e`, caseId: 'case_vikram_abstain', eventType: 'INTERVENTION_SCORED', description: 'Estimated Recovery Probability with Intervention: 74%', createdAt: new Date(now - 7194000) });
+    this.audits.push({ id: `evt_${now}_4f`, caseId: 'case_vikram_abstain', eventType: 'INCREMENTAL_VALUE_CALCULATED', description: 'Estimated Incremental Lift: +2pp | Expected Incremental Recovery Value: ₹100', createdAt: new Date(now - 7192000) });
+    this.audits.push({ id: `evt_${now}_4g`, caseId: 'case_vikram_abstain', eventType: 'INTERVENTION_COST_EVALUATED', description: 'Estimated Intervention Cost: ₹150', createdAt: new Date(now - 7190000) });
+    this.audits.push({ id: `evt_${now}_4h`, caseId: 'case_vikram_abstain', eventType: 'DECISION_ABSTAIN', description: 'The estimated incremental recovery value does not justify the intervention cost.', createdAt: new Date(now - 7188000) });
 
     // Audits for Priya Case (Escalated)
     this.audits.push({ id: `evt_${now}_5`, caseId: 'case_priya_fail', eventType: 'RECOVERY_DETECTED', description: 'Recovery opportunity detected for ₹84,000', createdAt: new Date(now - 3600000) });
     this.audits.push({ id: `evt_${now}_6`, caseId: 'case_priya_fail', eventType: 'DIAGNOSIS_COMPLETED', description: 'Diagnosis: Hard Payment Failure', createdAt: new Date(now - 3598000) });
-    this.audits.push({ id: `evt_${now}_7`, caseId: 'case_priya_fail', eventType: 'RECOVERY_SCORED', description: 'Recovery Probability: 18% | Expected Recovery Value: ₹15,120', createdAt: new Date(now - 3596000) });
+    this.audits.push({ id: `evt_${now}_7`, caseId: 'case_priya_fail', eventType: 'BASELINE_SCORED', description: 'Estimated Natural Recovery Probability: 8%', createdAt: new Date(now - 3596000) });
+    this.audits.push({ id: `evt_${now}_7a`, caseId: 'case_priya_fail', eventType: 'INTERVENTION_SCORED', description: 'Estimated Recovery Probability with Intervention: 18%', createdAt: new Date(now - 3595000) });
     this.audits.push({ id: `evt_${now}_8`, caseId: 'case_priya_fail', eventType: 'INTERVENTION_RECOMMENDED', description: 'Recommended Intervention: Manual Review', createdAt: new Date(now - 3594000) });
-    this.audits.push({ id: `evt_${now}_9`, caseId: 'case_priya_fail', eventType: 'POLICY_ESCALATED', description: 'Automation stopped. Amount exceeds escalation threshold.', createdAt: new Date(now - 3592000) });
+    this.audits.push({ id: `evt_${now}_9`, caseId: 'case_priya_fail', eventType: 'DECISION_ESCALATE', description: 'Amount at risk (₹84,000) exceeds automated escalation threshold (₹50,000).', createdAt: new Date(now - 3592000) });
+    this.audits.push({ id: `evt_${now}_9a`, caseId: 'case_priya_fail', eventType: 'POLICY_ESCALATED', description: 'Automation stopped. High financial exposure exceeds automated recovery guardrails.', createdAt: new Date(now - 3591000) });
+
 
     // Audits and Actions for Karan (Recovered)
     this.audits.push({ id: `evt_${now}_10`, caseId: 'case_karan_success', eventType: 'RECOVERY_DETECTED', description: 'Recovery opportunity detected for ₹4,999', createdAt: new Date(now - 86400000) });
@@ -408,4 +508,9 @@ export const demoRepo = globalForDemoRepo.demoRepo ?? new DemoRepository();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForDemoRepo.demoRepo = demoRepo;
+}
+
+// Ensure newly added seed cases are present even if globalThis preserved an older instance in dev
+if (!demoRepo.cases['case_vikram_abstain']) {
+  demoRepo.seed();
 }

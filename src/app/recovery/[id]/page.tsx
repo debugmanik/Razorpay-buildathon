@@ -130,196 +130,237 @@ export default async function RecoveryCasePage({ params }: { params: Promise<{ i
 
       {/* Two-Column Operational Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-        
-        {/* LEFT / MAIN COLUMN: Case Details, Decision Context & Action Controls */}
+             {/* LEFT / MAIN COLUMN: Case Details, Decision Context & Action Controls */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6 min-w-0">
           
           {/* 1. HERO KPI SUMMARY */}
-          <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-lg">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Amount at Risk</p>
-                <div className="text-xl font-bold text-slate-900">{formatINR(caseCtx.amountAtRisk)}</div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Probability</p>
-                <div className="text-xl font-bold text-slate-900">
-                  {caseCtx.recoveryProbability !== undefined ? `${Math.round(caseCtx.recoveryProbability * 100)}%` : '--'}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Expected Recovery</p>
-                <div className="text-xl font-bold text-emerald-600">
-                  {caseCtx.expectedRecovery !== undefined ? formatINR(caseCtx.expectedRecovery) : '--'}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</p>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    caseCtx.status === 'recovered' ? 'bg-emerald-500' : 
-                    caseCtx.status === 'stopped' || caseCtx.status === 'escalated' ? 'bg-rose-500' : 
-                    caseCtx.status === 'recovering' ? 'bg-amber-400' : 
-                    'bg-indigo-500'
-                  }`} />
-                  <span className="text-sm font-semibold text-slate-800 capitalize">{caseCtx.status}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          {(() => {
+            const baselineProb = caseCtx.estimatedBaselineRecoveryProbability ?? caseCtx.baselineRecoveryProbability ?? 0.20;
+            const interventionProb = caseCtx.recoveryProbability ?? 0.50;
+            const incrementalLift = caseCtx.incrementalLift ?? Math.round((interventionProb - baselineProb) * 100) / 100;
+            const expectedRecoveryValue = caseCtx.expectedRecovery ?? Math.round(caseCtx.amountAtRisk * interventionProb);
+            const expectedIncrementalRecoveryValue = caseCtx.expectedIncrementalRecoveryValue ?? Math.round(caseCtx.amountAtRisk * incrementalLift);
+            const estimatedCost = caseCtx.estimatedInterventionCost ?? 10;
+            const expectedNetRecoveryValue = caseCtx.expectedNetRecoveryValue ?? (expectedIncrementalRecoveryValue - estimatedCost);
+            const decision = caseCtx.decision ?? (caseCtx.status === 'escalated' ? 'ESCALATE' : expectedNetRecoveryValue <= 0 ? 'ABSTAIN' : 'ACT');
+            const decisionReason = caseCtx.decisionReason ?? (
+              decision === 'ACT' 
+                ? 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.' 
+                : decision === 'ABSTAIN' 
+                ? 'The estimated incremental recovery value does not justify the intervention cost.' 
+                : 'Policy escalation threshold reached.'
+            );
 
-          {/* 2. EXECUTE RECOVERY / PAYMENT SECTION (Immediate Visibility) */}
-          {caseCtx.status === 'recovered' ? (
-            /* PAYMENT RECOVERED STATE */
-            <Card className="border-emerald-200 bg-emerald-50/60 overflow-hidden shadow-sm">
-              <div className="bg-emerald-600 p-5 text-white text-center">
-                <h3 className="font-bold tracking-wider uppercase text-xs mb-1 opacity-90">Payment Recovered</h3>
-                <div className="text-3xl sm:text-4xl font-extrabold">{formatINR(actualRecovered || caseCtx.amountAtRisk)}</div>
-                <p className="text-xs sm:text-sm mt-1 opacity-90">Recovery payment completed successfully. Funds captured.</p>
-              </div>
-              <CardContent className="p-5 sm:p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Customer payment completed
-                  </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Razorpay payment captured
-                  </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Recovery confirmed by webhook
-                  </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Revenue recorded in ledger
+            return (
+              <>
+                <div className="p-5 bg-white border border-slate-200 shadow-sm rounded-lg">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Amount at Risk</p>
+                      <div className="text-xl font-bold text-slate-900">{formatINR(caseCtx.amountAtRisk)}</div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Estimated Lift</p>
+                      <div className="text-base font-bold text-slate-900">
+                        {Math.round(baselineProb * 100)}% → {Math.round(interventionProb * 100)}%
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-700">+{Math.round(incrementalLift * 100)}pp est. lift</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">Expected Net Value</p>
+                      <div className="text-xl font-bold text-indigo-600">
+                        {formatINR(expectedNetRecoveryValue)}
+                      </div>
+                      <span className="text-[10px] text-slate-400">Cost: ₹{estimatedCost}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Decision</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider border ${
+                          decision === 'ACT' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                          decision === 'ABSTAIN' ? 'bg-slate-100 text-slate-700 border-slate-300' :
+                          'bg-amber-50 text-amber-800 border-amber-300'
+                        }`}>
+                          {decision}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 capitalize font-medium mt-0.5 block">{caseCtx.status}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-md border border-emerald-100 p-4 shadow-2xs">
-                  <dl className="space-y-2 text-sm">
-                    <div className="flex justify-between border-b border-emerald-50 pb-1.5">
-                      <dt className="text-slate-500 text-xs">Original payment</dt>
-                      <dd className="font-medium text-rose-600 text-xs">Failed</dd>
+                {/* 2. EXECUTE RECOVERY / PAYMENT SECTION (Immediate Visibility) */}
+                {caseCtx.status === 'recovered' ? (
+                  /* PAYMENT RECOVERED STATE */
+                  <Card className="border-emerald-200 bg-emerald-50/60 overflow-hidden shadow-sm">
+                    <div className="bg-emerald-600 p-5 text-white text-center">
+                      <h3 className="font-bold tracking-wider uppercase text-xs mb-1 opacity-90">Payment Recovered</h3>
+                      <div className="text-3xl sm:text-4xl font-extrabold">{formatINR(actualRecovered || caseCtx.amountAtRisk)}</div>
+                      <p className="text-xs sm:text-sm mt-1 opacity-90">Recovery payment completed successfully. Funds captured.</p>
                     </div>
-                    <div className="flex justify-between border-b border-emerald-50 pb-1.5">
-                      <dt className="text-slate-500 text-xs">Recovery payment</dt>
-                      <dd className="font-medium text-emerald-600 text-xs">Captured</dd>
+                    <CardContent className="p-5 sm:p-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          Customer payment completed
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          Razorpay payment captured
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          Recovery confirmed by webhook
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-800 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          Revenue recorded in ledger
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-md border border-emerald-100 p-4 shadow-2xs">
+                        <dl className="space-y-2 text-sm">
+                          <div className="flex justify-between border-b border-emerald-50 pb-1.5">
+                            <dt className="text-slate-500 text-xs">Original payment</dt>
+                            <dd className="font-medium text-rose-600 text-xs">Failed</dd>
+                          </div>
+                          <div className="flex justify-between border-b border-emerald-50 pb-1.5">
+                            <dt className="text-slate-500 text-xs">Recovery payment</dt>
+                            <dd className="font-medium text-emerald-600 text-xs">Captured</dd>
+                          </div>
+                          <div className="flex justify-between pt-1">
+                            <dt className="text-slate-700 font-medium text-xs">Revenue recovered</dt>
+                            <dd className="font-bold text-emerald-700 text-sm">{formatINR(actualRecovered || caseCtx.amountAtRisk)}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-slate-200 shadow-sm bg-white overflow-hidden">
+                    <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-3">
+                      <CardTitle className="text-base font-bold text-slate-900">Execute Recovery</CardTitle>
+                      <CardDescription className="text-xs">
+                        Policy-approved automated intervention workflow.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-5">
+                      <RecoveryControls 
+                        caseId={id} 
+                        status={caseCtx.status} 
+                        recommendedAction={caseCtx.recommendedAction || 'None'} 
+                        metadata={caseCtx.metadata}
+                        actualRecovered={actualRecovered}
+                        amountAtRisk={caseCtx.amountAtRisk}
+                        keyId={process.env.RAZORPAY_KEY_ID || ''}
+                        isPolicyExhausted={caseCtx.policy ? caseCtx.attemptCount >= caseCtx.policy.maxAttempts : false}
+                        decision={decision}
+                        decisionReason={decisionReason}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 3. RECOVERY RATIONALE & DIAGNOSIS */}
+                <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5">
+                  <h3 className="text-base font-semibold text-slate-900 mb-3">Recovery Rationale</h3>
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    The original revenue opportunity was {formatINR(caseCtx.amountAtRisk)}. Natural recovery probability is estimated at {Math.round(baselineProb * 100)}%. RecoverX estimates an intervention recovery probability of {Math.round(interventionProb * 100)}% (+{Math.round(incrementalLift * 100)}pp estimated lift), yielding an Expected Incremental Recovery Value of <strong className="text-slate-900">{formatINR(expectedIncrementalRecoveryValue)}</strong> and Expected Net Recovery Value of <strong className="text-emerald-700">{formatINR(expectedNetRecoveryValue)}</strong> after ₹{estimatedCost} estimated intervention cost.
+                  </p>
+                  <div className="pt-3.5 mt-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">Root Cause Diagnosis</span>
+                      <p className="text-sm font-medium text-slate-900">{caseCtx.diagnosis || 'Automated assessment pending'}</p>
                     </div>
-                    <div className="flex justify-between pt-1">
-                      <dt className="text-slate-700 font-medium text-xs">Revenue recovered</dt>
-                      <dd className="font-bold text-emerald-700 text-sm">{formatINR(actualRecovered || caseCtx.amountAtRisk)}</dd>
+                    {caseCtx.paymentDetails?.failureReason && (
+                      <div className="sm:text-right">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">Failure Signal</span>
+                        <p className="text-xs italic text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200 inline-block">
+                          &quot;{caseCtx.paymentDetails.failureReason}&quot;
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. OPERATIONAL DECISION TRACE */}
+                <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Operational Decision Trace</h3>
+                      <p className="text-xs text-slate-500">Rigorous financial evaluation before automated execution.</p>
+                    </div>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider border ${
+                      decision === 'ACT' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                      decision === 'ABSTAIN' ? 'bg-slate-100 text-slate-700 border-slate-300' :
+                      'bg-amber-50 text-amber-800 border-amber-300'
+                    }`}>
+                      Decision: {decision}
+                    </span>
+                  </div>
+
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Amount at Risk</dt>
+                      <dd className="font-semibold text-slate-900 text-xs">{formatINR(caseCtx.amountAtRisk)}</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Estimated Natural Recovery Probability</dt>
+                      <dd className="font-semibold text-slate-700 text-xs">{Math.round(baselineProb * 100)}%</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Estimated Recovery Probability with Intervention</dt>
+                      <dd className="font-semibold text-slate-900 text-xs">{Math.round(interventionProb * 100)}%</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Estimated Incremental Lift</dt>
+                      <dd className="font-bold text-emerald-700 text-xs">+{Math.round(incrementalLift * 100)}pp</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Expected Recovery Value</dt>
+                      <dd className="font-semibold text-slate-700 text-xs">{formatINR(expectedRecoveryValue)}</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Expected Incremental Recovery Value</dt>
+                      <dd className="font-bold text-slate-900 text-xs">{formatINR(expectedIncrementalRecoveryValue)}</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Estimated Intervention Cost</dt>
+                      <dd className="font-medium text-slate-600 text-xs">₹{estimatedCost}</dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs font-semibold">Expected Net Recovery Value</dt>
+                      <dd className={`font-bold text-xs ${expectedNetRecoveryValue > 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {formatINR(expectedNetRecoveryValue)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Recommended Intervention</dt>
+                      <dd className="font-semibold text-slate-900 text-xs">
+                        {caseCtx.recommendedAction ? formatActionName(caseCtx.recommendedAction) : 'None'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Policy Engine Check</dt>
+                      <dd className="text-xs font-semibold">
+                        {caseCtx.status === 'stopped' || caseCtx.status === 'escalated' ? (
+                          <span className="text-rose-600">Blocked / Escalated</span>
+                        ) : (
+                          <span className="text-emerald-600">Approved</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2 pt-2 bg-slate-50 p-3 rounded border border-slate-200">
+                      <dt className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Decision Rationale</dt>
+                      <dd className="text-xs font-medium text-slate-800 leading-relaxed">
+                        {decisionReason}
+                      </dd>
                     </div>
                   </dl>
                 </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-slate-200 shadow-sm bg-white overflow-hidden">
-              <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">Execute Recovery</CardTitle>
-                <CardDescription className="text-xs">
-                  Policy-approved automated intervention workflow.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-5">
-                <RecoveryControls 
-                  caseId={id} 
-                  status={caseCtx.status} 
-                  recommendedAction={caseCtx.recommendedAction || 'None'} 
-                  metadata={caseCtx.metadata}
-                  actualRecovered={actualRecovered}
-                  amountAtRisk={caseCtx.amountAtRisk}
-                  keyId={process.env.RAZORPAY_KEY_ID || ''}
-                  isPolicyExhausted={caseCtx.policy ? caseCtx.attemptCount >= caseCtx.policy.maxAttempts : false}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 3. RECOVERY RATIONALE & DIAGNOSIS */}
-          <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5">
-            <h3 className="text-base font-semibold text-slate-900 mb-3">Recovery Rationale</h3>
-            <p className="text-sm text-slate-700 leading-relaxed">
-              The original revenue opportunity was {formatINR(caseCtx.amountAtRisk)}. RecoverX estimates a <strong className="text-emerald-700">{caseCtx.expectedRecovery !== undefined ? formatINR(caseCtx.expectedRecovery) : 'Pending'}</strong> expected recovery value based on the current recovery probability. Based on the policy engine, the recommended intervention is <strong className="text-slate-900">{caseCtx.recommendedAction ? formatActionName(caseCtx.recommendedAction) : 'Pending'}</strong>.
-            </p>
-            <div className="pt-3.5 mt-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-              <div>
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">Root Cause Diagnosis</span>
-                <p className="text-sm font-medium text-slate-900">{caseCtx.diagnosis || 'Automated assessment pending'}</p>
-              </div>
-              {caseCtx.paymentDetails?.failureReason && (
-                <div className="sm:text-right">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-0.5">Failure Signal</span>
-                  <p className="text-xs italic text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200 inline-block">
-                    &quot;{caseCtx.paymentDetails.failureReason}&quot;
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 4. OPERATIONAL DECISION TRACE */}
-          <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5">
-            <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-base font-semibold text-slate-900">Operational Decision Trace</h3>
-              <span className="text-xs text-slate-500 font-mono">Policy Verified</span>
-            </div>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Failure Detected</dt>
-                <dd className="font-semibold text-slate-900 text-xs">{formatINR(caseCtx.amountAtRisk)}</dd>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Diagnosis</dt>
-                <dd className="font-medium text-slate-900 text-xs truncate max-w-[180px]">{caseCtx.diagnosis || 'Pending'}</dd>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Recovery Probability</dt>
-                <dd className="font-semibold text-slate-900 text-xs">
-                  {caseCtx.recoveryProbability !== undefined ? `${Math.round(caseCtx.recoveryProbability * 100)}%` : '--'}
-                </dd>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Expected Recovery</dt>
-                <dd className="font-bold text-emerald-700 text-xs">
-                  {caseCtx.expectedRecovery !== undefined ? formatINR(caseCtx.expectedRecovery) : '--'}
-                </dd>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Recommended Intervention</dt>
-                <dd className="font-semibold text-slate-900 text-xs">
-                  {caseCtx.recommendedAction ? formatActionName(caseCtx.recommendedAction) : 'None'}
-                </dd>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                <dt className="text-slate-500 text-xs">Policy Check</dt>
-                <dd className="text-xs font-semibold">
-                  {caseCtx.status === 'stopped' || caseCtx.status === 'escalated' ? (
-                    <span className="text-rose-600">Blocked</span>
-                  ) : (
-                    <span className="text-emerald-600">Approved</span>
-                  )}
-                </dd>
-              </div>
-              <div className="flex justify-between sm:col-span-2 pt-1">
-                <dt className="text-slate-600 text-xs font-medium">Next Operational Action</dt>
-                <dd className="font-semibold text-slate-900 text-xs">
-                  {caseCtx.status === 'ready' ? (caseCtx.recommendedAction ? formatActionName(caseCtx.recommendedAction) : 'Create Recovery Payment') 
-                  : caseCtx.status === 'recovering' ? (
-                      caseCtx.metadata?.lastCustomerIntent === 'ALREADY_PAID' ? 'Payment Verification'
-                      : caseCtx.metadata?.recoveryOrderId ? 'Awaiting Customer Payment' 
-                      : 'Awaiting Customer Intent'
-                    ) 
-                  : caseCtx.status === 'stopped' ? 'Manual Review' 
-                  : caseCtx.status === 'escalated' ? 'Escalated' 
-                  : 'Recovery Complete'}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
+              </>
+            );
+          })()}
         </div>
 
         {/* RIGHT / SECONDARY COLUMN: Compact Operational Audit Trail */}

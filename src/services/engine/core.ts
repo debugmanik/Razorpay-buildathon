@@ -1,4 +1,4 @@
-import { CaseStatus, CaseType, ActionType, ActionStatus, RecoveryPolicy, PromiseStatus } from '@/types/domain';
+import { CaseStatus, CaseType, ActionType, ActionStatus, RecoveryPolicy, PromiseStatus, RecoveryDecision } from '@/types/domain';
 import { validateTransition } from './state';
 import { diagnoseCase } from './diagnosis';
 import { calculateRecoveryScore } from './scoring';
@@ -27,9 +27,17 @@ export type FullCaseContext = {
   policy?: RecoveryPolicy | null;
   lastActionAt?: Date | null;
   
-  // Computed fields (persisted authoritatively on the case)
-  recoveryProbability?: number;
-  expectedRecovery?: number;
+  // Computed & Economic decisioning fields (persisted authoritatively on the case)
+  recoveryProbability?: number; // Estimated Recovery Probability with Intervention
+  estimatedBaselineRecoveryProbability?: number; // Estimated Natural Recovery Probability
+  baselineRecoveryProbability?: number; // Alias for convenience
+  incrementalLift?: number; // Estimated Incremental Lift (decimal, e.g. 0.54 for +54pp)
+  expectedRecovery?: number; // Gross: amountAtRisk * recoveryProbability
+  expectedIncrementalRecoveryValue?: number; // amountAtRisk * incrementalLift
+  estimatedInterventionCost?: number; // Configured estimated cost
+  expectedNetRecoveryValue?: number; // expectedIncrementalRecoveryValue - estimatedInterventionCost
+  decision?: RecoveryDecision; // 'ACT' | 'ABSTAIN' | 'ESCALATE'
+  decisionReason?: string;
   riskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
   recommendedAction?: string;
   diagnosis?: string;
@@ -102,7 +110,10 @@ export class RecoveryEngine {
         isHighRiskSignal: isHardFailure,
       });
 
-      await this.repo.saveAudit(caseId, 'RECOVERY_SCORED', `Probability: ${score.recoveryProbability}. Expected Recovery: ₹${score.expectedRecovery}`);
+      await this.repo.saveAudit(caseId, 'BASELINE_SCORED', `Estimated Natural Recovery Probability: ${Math.round(score.estimatedBaselineRecoveryProbability * 100)}%`);
+      await this.repo.saveAudit(caseId, 'INTERVENTION_SCORED', `Estimated Recovery Probability with Intervention: ${Math.round(score.recoveryProbability * 100)}%`);
+      await this.repo.saveAudit(caseId, 'INCREMENTAL_VALUE_CALCULATED', `Estimated Incremental Lift: +${Math.round(score.incrementalLift * 100)}pp | Expected Incremental Recovery Value: ₹${score.expectedIncrementalRecoveryValue.toLocaleString('en-IN')}`);
+      await this.repo.saveAudit(caseId, 'RECOVERY_SCORED', `Probability: ${score.recoveryProbability} | Expected Recovery Value: ₹${score.expectedRecovery.toLocaleString('en-IN')}`);
 
       const intervention = selectIntervention({
         caseType: ctx.type,
@@ -110,20 +121,39 @@ export class RecoveryEngine {
         expectedRecovery: score.expectedRecovery,
         diagnosisCategory: diagnosis.category,
         hasPromiseToPay: ctx.hasPromiseToPay,
+        amountAtRisk: ctx.amountAtRisk,
+        expectedIncrementalRecoveryValue: score.expectedIncrementalRecoveryValue,
       });
 
       await this.repo.saveAudit(caseId, 'INTERVENTION_RECOMMENDED', `Recommended ${intervention.action}: ${intervention.reason}`);
+      await this.repo.saveAudit(caseId, 'INTERVENTION_COST_EVALUATED', `Estimated Intervention Cost: ₹${intervention.estimatedInterventionCost}`);
 
       validateTransition(ctx.status, 'ready');
       await this.repo.saveCaseState(caseId, 'ready', {
         recoveryProbability: score.recoveryProbability,
+        estimatedBaselineRecoveryProbability: score.estimatedBaselineRecoveryProbability,
+        baselineRecoveryProbability: score.baselineRecoveryProbability,
+        incrementalLift: score.incrementalLift,
         expectedRecovery: score.expectedRecovery,
+        expectedIncrementalRecoveryValue: score.expectedIncrementalRecoveryValue,
+        estimatedInterventionCost: intervention.estimatedInterventionCost,
+        expectedNetRecoveryValue: intervention.expectedNetRecoveryValue,
+        decision: intervention.decision,
+        decisionReason: intervention.decisionReason,
         recommendedAction: intervention.action,
         diagnosis: diagnosis.category,
       });
       ctx.status = 'ready';
       ctx.recoveryProbability = score.recoveryProbability;
+      ctx.estimatedBaselineRecoveryProbability = score.estimatedBaselineRecoveryProbability;
+      ctx.baselineRecoveryProbability = score.baselineRecoveryProbability;
+      ctx.incrementalLift = score.incrementalLift;
       ctx.expectedRecovery = score.expectedRecovery;
+      ctx.expectedIncrementalRecoveryValue = score.expectedIncrementalRecoveryValue;
+      ctx.estimatedInterventionCost = intervention.estimatedInterventionCost;
+      ctx.expectedNetRecoveryValue = intervention.expectedNetRecoveryValue;
+      ctx.decision = intervention.decision;
+      ctx.decisionReason = intervention.decisionReason;
       ctx.recommendedAction = intervention.action;
       ctx.diagnosis = diagnosis.category;
     }
@@ -151,18 +181,45 @@ export class RecoveryEngine {
     });
 
     if (!policyDecision.allowed) {
+      const finalDecision: RecoveryDecision = policyDecision.escalate ? 'ESCALATE' : 'ABSTAIN';
+      ctx.decision = finalDecision;
+      ctx.decisionReason = policyDecision.reason;
+
+      await this.repo.saveAudit(caseId, finalDecision === 'ESCALATE' ? 'DECISION_ESCALATE' : 'DECISION_ABSTAIN', policyDecision.reason);
       await this.repo.saveAudit(caseId, 'POLICY_CHECKED', `Action blocked by policy: ${policyDecision.reason}`);
       await this.repo.saveAudit(caseId, 'ACTION_BLOCKED', `Blocked action: ${ctx.recommendedAction}`);
       
       if (policyDecision.stop) {
         const nextStatus = policyDecision.escalate ? 'escalated' : 'stopped';
         validateTransition(ctx.status, nextStatus);
-        await this.repo.saveCaseState(caseId, nextStatus, {});
+        await this.repo.saveCaseState(caseId, nextStatus, {
+          decision: finalDecision,
+          decisionReason: policyDecision.reason
+        });
         await this.repo.saveAudit(caseId, nextStatus === 'escalated' ? 'RECOVERY_ESCALATED' : 'RECOVERY_STOPPED', policyDecision.reason);
       }
       return;
     }
 
+    // Policy allowed. Now evaluate economic net value (Primary ABSTAIN condition: expectedNetRecoveryValue <= 0)
+    if (ctx.expectedNetRecoveryValue !== undefined && ctx.expectedNetRecoveryValue <= 0) {
+      const abstainReason = 'The estimated incremental recovery value does not justify the intervention cost.';
+      ctx.decision = 'ABSTAIN';
+      ctx.decisionReason = abstainReason;
+
+      await this.repo.saveAudit(caseId, 'DECISION_ABSTAIN', abstainReason);
+      await this.repo.saveCaseState(caseId, ctx.status, {
+        decision: 'ABSTAIN',
+        decisionReason: abstainReason,
+      });
+      // Stopped from taking further costly automation
+      return;
+    }
+
+    // Both economics and policy approve -> ACT!
+    ctx.decision = 'ACT';
+    ctx.decisionReason = 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.';
+    await this.repo.saveAudit(caseId, 'DECISION_ACT', `Expected Net Recovery Value: ₹${(ctx.expectedNetRecoveryValue || 0).toLocaleString('en-IN')}`);
     await this.repo.saveAudit(caseId, 'POLICY_CHECKED', 'Action approved by policy');
     await this.repo.saveAudit(caseId, 'ACTION_APPROVED', `Approved action: ${ctx.recommendedAction}`);
 

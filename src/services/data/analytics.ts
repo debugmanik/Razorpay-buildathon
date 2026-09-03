@@ -1,6 +1,7 @@
 import { demoRepo } from "./demoRepository";
 import { calculateRecoveryScore } from "@/services/engine/scoring";
 import { FullCaseContext } from "@/services/engine/core";
+import { formatCaseType } from "@/lib/format";
 
 export type TimeFilter = 7 | 30 | 'all';
 
@@ -13,33 +14,83 @@ function getFilteredCases(days: TimeFilter) {
   return cases.filter(c => new Date(c.createdAt) >= cutoff);
 }
 
-function getExpected(c: FullCaseContext) {
-  if (c.expectedRecovery !== undefined) return c.expectedRecovery;
-  const score = calculateRecoveryScore({
-    previousSuccesses: c.customerHistory?.previousSuccesses || 0,
-    previousFailures: c.customerHistory?.previousFailures || 0,
-    amountAtRisk: c.amountAtRisk,
-    isTemporaryFailureSignal: c.paymentDetails?.failureReason === 'Temporary network timeout',
-    isHighRiskSignal: c.paymentDetails?.failureReason === 'Insufficient funds'
-  });
-  return score.expectedRecovery;
+function getEconomicMetricsForCase(c: FullCaseContext) {
+  let baselineProb = c.estimatedBaselineRecoveryProbability ?? c.baselineRecoveryProbability;
+  let interventionProb = c.recoveryProbability;
+  let expectedRecovery = c.expectedRecovery;
+  let expectedIncremental = c.expectedIncrementalRecoveryValue;
+  let estimatedCost = c.estimatedInterventionCost;
+  let expectedNet = c.expectedNetRecoveryValue;
+  let decision = c.decision;
+
+  if (interventionProb === undefined || expectedRecovery === undefined || baselineProb === undefined) {
+    const isTemp = c.paymentDetails?.failureReason === 'Temporary network timeout';
+    const isHard = c.paymentDetails?.failureReason === 'Insufficient funds';
+    const score = calculateRecoveryScore({
+      previousSuccesses: c.customerHistory?.previousSuccesses || 0,
+      previousFailures: c.customerHistory?.previousFailures || 0,
+      amountAtRisk: c.amountAtRisk,
+      isTemporaryFailureSignal: isTemp,
+      isHighRiskSignal: isHard,
+    });
+    baselineProb = score.estimatedBaselineRecoveryProbability;
+    interventionProb = score.recoveryProbability;
+    expectedRecovery = score.expectedRecovery;
+    expectedIncremental = score.expectedIncrementalRecoveryValue;
+  }
+
+  if (baselineProb === undefined) baselineProb = 0.20;
+  if (interventionProb === undefined) interventionProb = 0.50;
+  if (expectedRecovery === undefined) expectedRecovery = Math.round(c.amountAtRisk * interventionProb);
+  if (expectedIncremental === undefined) {
+    const lift = Math.max(0, interventionProb - baselineProb);
+    expectedIncremental = Math.round(c.amountAtRisk * lift);
+  }
+  if (estimatedCost === undefined) estimatedCost = 10;
+  if (expectedNet === undefined) expectedNet = Math.round(expectedIncremental - estimatedCost);
+  if (!decision) {
+    if (c.status === 'escalated') decision = 'ESCALATE';
+    else if (expectedNet <= 0) decision = 'ABSTAIN';
+    else decision = 'ACT';
+  }
+
+  return {
+    baselineProb,
+    interventionProb,
+    expectedRecovery,
+    expectedIncremental,
+    estimatedCost,
+    expectedNet,
+    decision,
+  };
 }
 
 export function getRecoveryImpactMetrics(days: TimeFilter) {
   const cases = getFilteredCases(days);
   
-  // Let's refine based on product definition:
-
-  // Let's refine based on product definition: 
-  // Expected Recovery = Total expected from all cases in the cohort.
-  // Recovered Revenue = Total recovered.
-  let totalCohortExpected = 0;
   let totalCohortAtRisk = 0;
+  let totalCohortExpected = 0;
+  let totalBaselineExpected = 0;
+  let totalExpectedIncremental = 0;
+  let totalEstimatedCost = 0;
+  let totalExpectedNet = 0;
   let totalCohortRecovered = 0;
+  const decisionMix = { act: 0, abstain: 0, escalate: 0 };
 
   cases.forEach(c => {
     totalCohortAtRisk += c.amountAtRisk;
-    totalCohortExpected += getExpected(c);
+    const econ = getEconomicMetricsForCase(c);
+    
+    totalCohortExpected += econ.expectedRecovery;
+    totalBaselineExpected += Math.round(c.amountAtRisk * econ.baselineProb);
+    totalExpectedIncremental += econ.expectedIncremental;
+    totalEstimatedCost += econ.estimatedCost;
+    totalExpectedNet += econ.expectedNet;
+
+    if (econ.decision === 'ACT') decisionMix.act++;
+    else if (econ.decision === 'ABSTAIN') decisionMix.abstain++;
+    else if (econ.decision === 'ESCALATE') decisionMix.escalate++;
+
     if (c.status === 'recovered') {
       totalCohortRecovered += c.amountAtRisk;
     }
@@ -48,17 +99,64 @@ export function getRecoveryImpactMetrics(days: TimeFilter) {
   return {
     revenueAtRisk: totalCohortAtRisk - totalCohortRecovered, // Currently at risk
     historicalAtRisk: totalCohortAtRisk,
-    expectedRecovery: totalCohortExpected, // Total expected across cohort
+    expectedRecovery: totalCohortExpected, // Gross expected across cohort
+    baselineExpectedRecovery: totalBaselineExpected, // Estimated natural recovery without action
+    expectedIncrementalRecoveryValue: totalExpectedIncremental, // Incremental lift value
+    estimatedInterventionCost: totalEstimatedCost, // Configured demo cost
+    expectedNetRecoveryValue: totalExpectedNet, // Net economic value
     recoveredRevenue: totalCohortRecovered,
     recoveryRate: totalCohortExpected > 0 ? (totalCohortRecovered / totalCohortExpected) : 0,
+    decisionMix,
   };
+}
+
+export function getOpportunityTypeEconomics(days: TimeFilter) {
+  const cases = getFilteredCases(days);
+  const groups: Record<string, {
+    type: string;
+    typeName: string;
+    count: number;
+    amountAtRisk: number;
+    baselineEstimate: number;
+    withActionEstimate: number;
+    incrementalRecovery: number;
+    actualRecovered: number;
+  }> = {};
+
+  cases.forEach(c => {
+    const type = c.type;
+    if (!groups[type]) {
+      groups[type] = {
+        type,
+        typeName: formatCaseType(type),
+        count: 0,
+        amountAtRisk: 0,
+        baselineEstimate: 0,
+        withActionEstimate: 0,
+        incrementalRecovery: 0,
+        actualRecovered: 0,
+      };
+    }
+
+    const econ = getEconomicMetricsForCase(c);
+    groups[type].count++;
+    groups[type].amountAtRisk += c.amountAtRisk;
+    groups[type].baselineEstimate += Math.round(c.amountAtRisk * econ.baselineProb);
+    groups[type].withActionEstimate += econ.expectedRecovery;
+    groups[type].incrementalRecovery += econ.expectedIncremental;
+
+    if (c.status === 'recovered') {
+      groups[type].actualRecovered += c.amountAtRisk;
+    }
+  });
+
+  return Object.values(groups).sort((a, b) => b.amountAtRisk - a.amountAtRisk);
 }
 
 export function getRecoveryTrend(days: TimeFilter) {
   const cases = getFilteredCases(days);
   const data: Record<string, { date: string, atRisk: number, expected: number, recovered: number }> = {};
 
-  // Initialize dates
   if (days !== 'all') {
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
@@ -74,12 +172,12 @@ export function getRecoveryTrend(days: TimeFilter) {
       data[dateStr] = { date: dateStr, atRisk: 0, expected: 0, recovered: 0 };
     }
     if (data[dateStr]) {
+      const econ = getEconomicMetricsForCase(c);
       data[dateStr].atRisk += c.amountAtRisk;
-      data[dateStr].expected += getExpected(c);
+      data[dateStr].expected += econ.expectedRecovery;
     }
   });
 
-  // Now add recovered on the date of recovery
   const actions = demoRepo.actions.filter(a => a.status === 'succeeded' && a.amountRecovered > 0);
   actions.forEach(a => {
     const dateStr = new Date(a.createdAt).toISOString().split('T')[0];
@@ -96,7 +194,6 @@ export function getInterventionPerformance(days: TimeFilter) {
   const caseIds = new Set(cases.map(c => c.id));
   
   const actions = demoRepo.actions.filter(a => caseIds.has(a.caseId));
-  
   const performance: Record<string, { type: string, attempts: number, successes: number, recovered: number }> = {};
   
   actions.forEach(a => {
@@ -119,95 +216,26 @@ export function getInterventionPerformance(days: TimeFilter) {
     }));
 }
 
-export function getFailureReasonPerformance(days: TimeFilter) {
+export function getBatchOutcomeQuality(days: TimeFilter) {
   const cases = getFilteredCases(days);
-  const performance: Record<string, { category: string, cases: number, atRisk: number, expected: number, recovered: number }> = {};
-
-  cases.forEach(c => {
-    const category = c.type; // Stable category like 'payment_failure'
-    
-    if (!performance[category]) {
-      performance[category] = { category, cases: 0, atRisk: 0, expected: 0, recovered: 0 };
-    }
-    
-    performance[category].cases++;
-    performance[category].atRisk += c.amountAtRisk;
-    performance[category].expected += getExpected(c);
-    
-    if (c.status === 'recovered') {
-      performance[category].recovered += c.amountAtRisk;
-    }
-  });
-
-  return Object.values(performance).map(p => ({
-    category: p.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-    cases: p.cases,
-    amountAtRisk: p.atRisk,
-    expectedRecovery: p.expected,
-    recoveredRevenue: p.recovered,
-    recoveryRate: p.expected > 0 ? p.recovered / p.expected : 0
-  })).sort((a, b) => b.expectedRecovery - a.expectedRecovery);
-}
-
-export function getPaymentMethodPerformance(days: TimeFilter) {
-  const cases = getFilteredCases(days);
-  const performance: Record<string, { method: string, cases: number, atRisk: number, expected: number, recovered: number }> = {};
-
-  cases.forEach(c => {
-    const method = c.paymentDetails?.method || 'Unknown';
-    if (!performance[method]) {
-      performance[method] = { method, cases: 0, atRisk: 0, expected: 0, recovered: 0 };
-    }
-    performance[method].cases++;
-    performance[method].atRisk += c.amountAtRisk;
-    performance[method].expected += getExpected(c);
-    if (c.status === 'recovered') {
-      performance[method].recovered += c.amountAtRisk;
-    }
-  });
-
-  return Object.values(performance).map(p => ({
-    ...p,
-    recoveryRate: p.expected > 0 ? p.recovered / p.expected : 0
-  })).sort((a, b) => b.atRisk - a.atRisk);
-}
-
-export function getBoundedAutonomyMetrics(days: TimeFilter) {
-  const cases = getFilteredCases(days);
-  
-  let automatedRecoveries = 0;
-  let stoppedByPolicy = 0;
-  let escalations = 0;
-
-  cases.forEach(c => {
-    if (c.status === 'recovered') automatedRecoveries++;
-    if (c.status === 'stopped') stoppedByPolicy++;
-    if (c.status === 'escalated') escalations++;
-  });
-
-  return {
-    automatedRecoveries,
-    stoppedByPolicy,
-    escalations
-  };
-}
-
-export function getRecoveryOutcomes(days: TimeFilter) {
-  const cases = getFilteredCases(days);
-  const outcomes: Record<string, { status: string, count: number, amount: number }> = {
-    recovered: { status: 'Recovered', count: 0, amount: 0 },
-    stopped: { status: 'Stopped', count: 0, amount: 0 },
-    escalated: { status: 'Escalated', count: 0, amount: 0 },
-    failed: { status: 'Failed', count: 0, amount: 0 },
-    pending: { status: 'Pending', count: 0, amount: 0 },
+  const outcomes: Record<string, { status: string, count: number, amount: number, description: string }> = {
+    recovered: { status: 'Successfully Recovered', count: 0, amount: 0, description: 'Verified funds captured via payment provider' },
+    pending: { status: 'Customer Pending', count: 0, amount: 0, description: 'Awaiting customer interaction or payment' },
+    abstained: { status: 'Abstained', count: 0, amount: 0, description: 'Intervention withheld due to low incremental return' },
+    stopped: { status: 'Policy Stopped', count: 0, amount: 0, description: 'Halted by max retry limits or cooldown rules' },
+    escalated: { status: 'Manually Escalated', count: 0, amount: 0, description: 'Routed to merchant ops for high financial exposure' },
+    failed: { status: 'Failed', count: 0, amount: 0, description: 'Terminal failure after exhausted options' },
   };
 
   cases.forEach(c => {
     let key = 'pending';
+    const econ = getEconomicMetricsForCase(c);
+
     if (c.status === 'recovered') key = 'recovered';
     else if (c.status === 'stopped') key = 'stopped';
     else if (c.status === 'escalated') key = 'escalated';
     else if (c.status === 'failed') key = 'failed';
+    else if (econ.decision === 'ABSTAIN') key = 'abstained';
     else if (c.status === 'ready' || c.status === 'recovering') key = 'pending';
 
     outcomes[key].count++;
@@ -251,34 +279,23 @@ export function getRecoveryFunnel(days: TimeFilter) {
   let recovered = 0;
 
   cases.forEach(c => {
-    // 1. Opportunities detected
     if (c.id || demoRepo.audits.some(a => a.caseId === c.id && a.eventType === 'RECOVERY_DETECTED')) {
       opportunities++;
     }
-    
-    // 2. Diagnosed
     if (c.diagnosis || demoRepo.audits.some(a => a.caseId === c.id && a.eventType === 'DIAGNOSIS_COMPLETED')) {
       diagnosed++;
     }
-
-    // 3. Intervention selected
     if (c.recommendedAction || demoRepo.audits.some(a => a.caseId === c.id && a.eventType === 'INTERVENTION_RECOMMENDED')) {
       interventionSelected++;
     }
-
-    // 4. Policy approved
     const caseActions = demoRepo.actions.filter(a => a.caseId === c.id);
     const hasApprovedAudit = demoRepo.audits.some(a => a.caseId === c.id && a.eventType === 'ACTION_APPROVED');
     if (caseActions.length > 0 || hasApprovedAudit) {
       policyApproved++;
     }
-    
-    // 5. Recovery executed
     if (caseActions.length > 0 || demoRepo.audits.some(a => a.caseId === c.id && a.eventType === 'ACTION_EXECUTED')) {
       executed++;
     }
-    
-    // 6. Recovered
     if (c.status === 'recovered') {
       recovered++;
     }
@@ -294,4 +311,48 @@ export function getRecoveryFunnel(days: TimeFilter) {
     paymentCreated: executed,
     recovered
   };
+}
+
+export function getBoundedAutonomyMetrics(days: TimeFilter) {
+  const cases = getFilteredCases(days);
+  let automatedRecoveries = 0;
+  let stoppedByPolicy = 0;
+  let escalations = 0;
+
+  cases.forEach(c => {
+    if (c.status === 'recovered') automatedRecoveries++;
+    if (c.status === 'stopped') stoppedByPolicy++;
+    if (c.status === 'escalated') escalations++;
+  });
+
+  return {
+    automatedRecoveries,
+    stoppedByPolicy,
+    escalations
+  };
+}
+
+export function getRecoveryOutcomes(days: TimeFilter) {
+  const cases = getFilteredCases(days);
+  const outcomes: Record<string, { status: string, count: number, amount: number }> = {
+    recovered: { status: 'Recovered', count: 0, amount: 0 },
+    stopped: { status: 'Stopped', count: 0, amount: 0 },
+    escalated: { status: 'Escalated', count: 0, amount: 0 },
+    failed: { status: 'Failed', count: 0, amount: 0 },
+    pending: { status: 'Pending', count: 0, amount: 0 },
+  };
+
+  cases.forEach(c => {
+    let key = 'pending';
+    if (c.status === 'recovered') key = 'recovered';
+    else if (c.status === 'stopped') key = 'stopped';
+    else if (c.status === 'escalated') key = 'escalated';
+    else if (c.status === 'failed') key = 'failed';
+    else if (c.status === 'ready' || c.status === 'recovering') key = 'pending';
+
+    outcomes[key].count++;
+    outcomes[key].amount += c.amountAtRisk;
+  });
+
+  return Object.values(outcomes);
 }

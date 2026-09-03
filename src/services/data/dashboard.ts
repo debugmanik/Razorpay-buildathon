@@ -42,17 +42,29 @@ export async function getRecoveryByIntervention() {
 
 export async function getPriorityCases() {
   return Object.values(demoRepo.cases)
-    .sort((a, b) => (b.expectedRecovery || 0) - (a.expectedRecovery || 0))
-    .map(c => ({
-      id: c.id,
-      customerName: (c.metadata?.customerName as string) || 'Unknown',
-      issue: c.diagnosis || c.paymentDetails?.failureReason || 'Unknown issue',
-      amount: c.amountAtRisk,
-      probability: c.recoveryProbability || 0,
-      expectedRecovery: c.expectedRecovery || 0,
-      status: c.status,
-      recommendedAction: c.recommendedAction || 'None'
-    }));
+    .sort((a, b) => (b.expectedNetRecoveryValue || b.expectedRecovery || 0) - (a.expectedNetRecoveryValue || a.expectedRecovery || 0))
+    .map(c => {
+      const baseline = c.estimatedBaselineRecoveryProbability ?? c.baselineRecoveryProbability ?? 0.20;
+      const intervention = c.recoveryProbability || 0;
+      const lift = c.incrementalLift ?? Math.max(0, intervention - baseline);
+      const net = c.expectedNetRecoveryValue ?? Math.round((c.expectedIncrementalRecoveryValue || (c.amountAtRisk * lift)) - (c.estimatedInterventionCost || 10));
+      const decision = c.decision ?? (c.status === 'escalated' ? 'ESCALATE' : net <= 0 ? 'ABSTAIN' : 'ACT');
+
+      return {
+        id: c.id,
+        customerName: (c.metadata?.customerName as string) || 'Unknown',
+        issue: c.diagnosis || c.paymentDetails?.failureReason || 'Unknown issue',
+        amount: c.amountAtRisk,
+        probability: intervention,
+        baselineProbability: baseline,
+        incrementalLift: lift,
+        expectedRecovery: c.expectedRecovery || 0,
+        expectedNetRecovery: net,
+        decision,
+        status: c.status,
+        recommendedAction: c.recommendedAction || 'None'
+      };
+    });
 }
 
 export async function getRecentRecoveryActivity() {

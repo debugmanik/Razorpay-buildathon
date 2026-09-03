@@ -7,7 +7,7 @@ An autonomous, policy-bounded revenue operations engine that detects revenue-ris
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Tests-41%20Passed%20%7C%209%20Suites-brightgreen?style=flat)](file:///Users/vipuljain/Desktop/RecoverX)
+[![Tests](https://img.shields.io/badge/Tests-51%20Passed%20%7C%2010%20Suites-brightgreen?style=flat)](file:///Users/vipuljain/Desktop/RecoverX)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Test%20Mode%20%26%20Simulation-0C2340?style=flat&logo=razorpay)](https://razorpay.com/)
 [![Buildathon](https://img.shields.io/badge/Razorpay%20Buildathon-Track%2003%20%C2%B7%20AI%20Revenue%20Recovery-blueviolet?style=flat)](https://razorpay.com/)
 
@@ -98,15 +98,22 @@ Every failure signal creates a structured revenue opportunity with customer hist
 ### 2. Diagnosis
 The system categorizes the failure root cause (e.g., `Temporary Payment Failure`, `Card Expired`, `Checkout Drop-off`, or `Overdue Receivable`).
 
-### 3. Recovery Scoring
-Cases are prioritized by mathematical expectation:
+### 3. Economic Recovery Scoring & Decisioning
+Cases are evaluated using counterfactual economic decisioning:
 
-$$\text{Expected Recovery Value} = \text{Amount at Risk} \times \text{Recovery Probability}$$
+- **Estimated Natural Recovery Probability:** Baseline likelihood of recovery without automated intervention (control baseline).
+- **Estimated Recovery Probability with Intervention:** Model score under the proposed intervention.
+- **Estimated Incremental Lift:** $\text{Intervention Probability} - \text{Baseline Probability}$ (e.g., $24\% \to 78\% = +54\text{pp}$).
+- **Expected Incremental Recovery Value:** $\text{Amount at Risk} \times \text{Incremental Lift}$.
+- **Expected Net Recovery Value:** $\text{Expected Incremental Recovery Value} - \text{Estimated Intervention Cost}$.
 
-*Example:*  
-₹12,500 at risk with a 78% recovery probability yields **₹9,750 Expected Recovery Value**.
+#### Tri-State Decisioning:
+- **`ACT`:** Expected Net Recovery Value $> 0$ and merchant policy permits automation.
+- **`ABSTAIN`:** Expected Net Recovery Value $\le 0$ (intervention costs exceed incremental lift, preventing customer spam and gateway fees).
+- **`ESCALATE`:** Merchant policy threshold exceeded (e.g., $> ₹50,000$) or retry limits reached, routing directly to merchant operations.
 
-> **Important:** Expected Recovery is an operational estimate used for queue prioritization. It is **never** counted as revenue recovered.
+> **Strict Policy Precedence:** Merchant policy always constrains automation. High expected value can **never** bypass merchant guardrails.
+> **Financial Integrity:** Neither expected recovery, incremental recovery, nor net value ever count as actual recovered revenue. Only confirmed captured payments increment recovered revenue.
 
 ### 4. Intervention Selection
 The engine determines the best recovery action based on opportunity type, diagnosis, past attempt count, and recovery scoring.

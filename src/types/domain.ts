@@ -21,6 +21,7 @@ export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ActionStatus = 'pending' | 'approved' | 'executing' | 'succeeded' | 'failed' | 'cancelled' | 'blocked';
 export type PolicyAction = 'allow' | 'deny' | 'require_approval';
 export type PromiseStatus = 'none' | 'promised' | 'due' | 'paid' | 'missed';
+export type RecoveryDecision = 'ACT' | 'ABSTAIN' | 'ESCALATE';
 
 // Re-export Prisma types so the application layer can use them seamlessly
 export type Merchant = PrismaMerchant;

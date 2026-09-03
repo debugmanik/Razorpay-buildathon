@@ -61,7 +61,32 @@ export function formatAuditDescription(description: string): string {
     .replace(/\bPAY_NOW\b/g, 'Pay Now');
 }
 
+export function formatPP(value: number): string {
+  const pp = Math.round(value * 100);
+  return pp >= 0 ? `+${pp}pp` : `${pp}pp`;
+}
+
 export function formatAuditEventType(eventType: string): string {
-  return eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const map: Record<string, string> = {
+    BASELINE_SCORED: 'Baseline Scored',
+    INTERVENTION_SCORED: 'Intervention Scored',
+    INCREMENTAL_VALUE_CALCULATED: 'Incremental Lift Calculated',
+    INTERVENTION_COST_EVALUATED: 'Intervention Cost Evaluated',
+    DECISION_ACT: 'Recovery Decision: ACT',
+    DECISION_ABSTAIN: 'Recovery Decision: ABSTAIN',
+    DECISION_ESCALATE: 'Recovery Decision: ESCALATE',
+    PAYMENT_VERIFICATION_REQUIRED: 'Payment Verification Required',
+    RECOVERY_DETECTED: 'Opportunity Detected',
+    DIAGNOSIS_COMPLETED: 'Diagnosis Completed',
+    RECOVERY_SCORED: 'Recovery Scored',
+    INTERVENTION_RECOMMENDED: 'Intervention Recommended',
+    POLICY_CHECKED: 'Policy Checked',
+    ACTION_APPROVED: 'Action Approved',
+    ACTION_EXECUTED: 'Action Executed',
+    PAYMENT_RECOVERED: 'Payment Recovered',
+    RECOVERY_STOPPED: 'Recovery Stopped',
+    RECOVERY_ESCALATED: 'Recovery Escalated',
+  };
+  return map[eventType] || eventType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 

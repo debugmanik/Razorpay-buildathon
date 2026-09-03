@@ -17,9 +17,22 @@ type Props = {
   amountAtRisk: number;
   keyId: string;
   isPolicyExhausted?: boolean;
+  decision?: 'ACT' | 'ABSTAIN' | 'ESCALATE';
+  decisionReason?: string;
 };
 
-export function RecoveryControls({ caseId, status, recommendedAction, metadata, actualRecovered, amountAtRisk, keyId, isPolicyExhausted }: Props) {
+export function RecoveryControls({ 
+  caseId, 
+  status, 
+  recommendedAction, 
+  metadata, 
+  actualRecovered, 
+  amountAtRisk, 
+  keyId, 
+  isPolicyExhausted,
+  decision,
+  decisionReason
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -46,12 +59,31 @@ export function RecoveryControls({ caseId, status, recommendedAction, metadata, 
     );
   }
 
-  if (status === 'stopped' || status === 'escalated' || isPolicyExhausted) {
+  if (decision === 'ABSTAIN') {
+    return (
+      <div className="rounded-md bg-slate-50 p-5 border border-slate-200">
+        <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+          Automated Intervention Abstained
+        </div>
+        <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+          {decisionReason || 'The estimated incremental recovery value does not justify the intervention cost or customer friction. RecoverX intentionally withholds automated recovery action.'}
+        </p>
+        <div className="mt-3.5 text-xs text-slate-500 bg-white border border-slate-200 rounded p-3">
+          <span className="font-semibold text-slate-700">Financial Rationale:</span> Estimated incremental value is insufficient to cover intervention overhead. Avoiding customer spam protects lifetime value.
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'stopped' || status === 'escalated' || isPolicyExhausted || decision === 'ESCALATE') {
     return (
       <div className="rounded-md bg-rose-50 p-4 border border-rose-200">
         <p className="text-sm font-medium text-rose-800">Manual Review Required</p>
         <p className="text-sm text-rose-600 mt-1">
-          {status === 'stopped' || isPolicyExhausted ? 'Policy guardrails halted further automation.' : 'Case escalated for manual review based on policy guardrails.'}
+          {status === 'stopped' || isPolicyExhausted 
+            ? 'Policy guardrails halted further automation.' 
+            : (decisionReason || 'Case escalated for manual review based on policy guardrails.')}
         </p>
       </div>
     );
