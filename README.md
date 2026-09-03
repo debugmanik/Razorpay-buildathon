@@ -430,7 +430,7 @@ Where customer payment or external confirmation is required, RecoverX does not m
 Open the **Audit Log** to trace the complete recovery lifecycle.
 
 Typical events include:
-
+```text
 Recovery Detected
 Diagnosis Completed
 Recovery Scored
@@ -441,6 +441,7 @@ Action Executed
 Recovery Payment Created
 Payment Captured
 Recovery Completed
+```
 ---
 
 ## License
