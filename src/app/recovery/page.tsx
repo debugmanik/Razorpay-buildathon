@@ -32,8 +32,8 @@ export default async function RecoveryQueuePage() {
           </div>
           <div className="w-px h-8 bg-slate-200 hidden sm:block" />
           <div className="text-right">
-            <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Expected Net</p>
-            <p className="text-lg font-bold text-indigo-600">{formatINR(metrics.expectedNetRecovery, true)}</p>
+            <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Expected Recovery</p>
+            <p className="text-lg font-bold text-indigo-600">{formatINR(metrics.expectedRecovery, true)}</p>
           </div>
           <div className="w-px h-8 bg-slate-200 hidden sm:block" />
           <div className="text-right">

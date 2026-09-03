@@ -19,6 +19,10 @@ type Props = {
   isPolicyExhausted?: boolean;
   decision?: 'ACT' | 'ABSTAIN' | 'ESCALATE';
   decisionReason?: string;
+  baselineProb?: number;
+  interventionProb?: number;
+  expectedNetRecoveryValue?: number;
+  policyThreshold?: number;
 };
 
 export function RecoveryControls({ 
@@ -31,7 +35,11 @@ export function RecoveryControls({
   keyId, 
   isPolicyExhausted,
   decision,
-  decisionReason
+  decisionReason,
+  baselineProb,
+  interventionProb,
+  expectedNetRecoveryValue,
+  policyThreshold
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -62,29 +70,69 @@ export function RecoveryControls({
   if (decision === 'ABSTAIN') {
     return (
       <div className="rounded-md bg-slate-50 p-5 border border-slate-200">
-        <div className="flex items-center gap-2 text-slate-800 font-bold text-sm uppercase tracking-wider">
-          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-          NO INTERVENTION
+        <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-slate-400" />
+          No Intervention
         </div>
         <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
-          {decisionReason || 'The estimated incremental recovery value does not justify the intervention cost or customer friction.'}
+          {decisionReason || 'The estimated incremental value does not justify intervention cost or customer friction.'}
         </p>
-        <div className="mt-3.5 text-xs text-slate-500 bg-white border border-slate-200 rounded p-3">
-          <span className="font-semibold text-slate-700">Financial Rationale:</span> RecoverX intentionally withholds automated action. The estimated natural recovery probability is high, making intervention overhead economically unviable.
+        <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-xs">
+          <div>
+            <span className="text-slate-500 text-[10px] block uppercase font-medium">Natural Recovery</span>
+            <span className="font-semibold text-slate-800">{Math.round((baselineProb ?? 0.7) * 100)}%</span>
+          </div>
+          <div>
+            <span className="text-slate-500 text-[10px] block uppercase font-medium">With Intervention</span>
+            <span className="font-semibold text-slate-800">{Math.round((interventionProb ?? 0.72) * 100)}%</span>
+          </div>
+          <div>
+            <span className="text-slate-500 text-[10px] block uppercase font-medium">Expected Net Value</span>
+            <span className="font-semibold text-slate-800">₹{(expectedNetRecoveryValue ?? 0).toLocaleString('en-IN')}</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (status === 'stopped' || status === 'escalated' || isPolicyExhausted || decision === 'ESCALATE') {
+  if (status === 'stopped' || isPolicyExhausted) {
     return (
-      <div className="rounded-md bg-rose-50 p-4 border border-rose-200">
-        <p className="text-sm font-medium text-rose-800">Manual Review Required</p>
-        <p className="text-sm text-rose-600 mt-1">
-          {status === 'stopped' || isPolicyExhausted 
-            ? 'Policy guardrails halted further automation.' 
-            : (decisionReason || 'Case escalated for manual review based on policy guardrails.')}
+      <div className="rounded-md bg-rose-50 p-5 border border-rose-200">
+        <div className="flex items-center gap-2 text-rose-800 font-bold text-xs uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          Recovery Stopped
+        </div>
+        <p className="text-xs text-rose-600 mt-2 leading-relaxed font-medium">
+          Policy guardrails halted further automation. Maximum retry attempts reached.
         </p>
+      </div>
+    );
+  }
+
+  if (decision === 'ESCALATE' || status === 'escalated') {
+    return (
+      <div className="rounded-md bg-amber-50 p-5 border border-amber-200">
+        <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          Manual Review Required
+        </div>
+        <p className="text-xs text-amber-700 mt-2 leading-relaxed font-medium">
+          {decisionReason || 'Automation is outside merchant policy for this opportunity.'}
+        </p>
+        <div className="mt-4 pt-3 border-t border-amber-200 grid grid-cols-3 gap-2 text-xs">
+          <div>
+            <span className="text-amber-700/80 text-[10px] block uppercase font-medium">Amount at Risk</span>
+            <span className="font-semibold text-amber-900">₹{amountAtRisk.toLocaleString('en-IN')}</span>
+          </div>
+          <div>
+            <span className="text-amber-700/80 text-[10px] block uppercase font-medium">Policy Threshold</span>
+            <span className="font-semibold text-amber-900">₹{(policyThreshold ?? 50000).toLocaleString('en-IN')}</span>
+          </div>
+          <div>
+            <span className="text-amber-700/80 text-[10px] block uppercase font-medium">Decision</span>
+            <span className="font-semibold text-amber-900">ESCALATE</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -217,16 +265,25 @@ export function RecoveryControls({
         </div>
       )}
       
-      <div className="text-sm text-slate-500 mb-4 leading-relaxed">
-        {normalizedAction === 'create_recovery_payment'
-          ? `RecoverX will create a new Razorpay recovery order for ₹${amountAtRisk.toLocaleString('en-IN')}. The customer completes the payment to recover the full amount.`
-          : `Executes the recommended automated action: ${formatActionName(normalizedAction)}`}
+      <div className="rounded-md bg-emerald-50/70 border border-emerald-200 p-4 mb-2">
+        <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          Recovery Action Ready
+        </div>
+        <p className="text-sm font-semibold text-slate-900 mt-1">
+          Recommended: {formatActionName(normalizedAction)}
+        </p>
+        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+          {normalizedAction === 'create_recovery_payment'
+            ? `RecoverX will create a Razorpay recovery order for ₹${amountAtRisk.toLocaleString('en-IN')}. The customer completes the payment to recover the full amount.`
+            : `RecoverX will execute the policy-approved intervention: ${formatActionName(normalizedAction)}.`}
+        </p>
       </div>
 
       <Button 
         onClick={handleExecute} 
         disabled={isExecuting || isRecovering}
-        className="w-full"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold h-11 text-sm sm:text-base shadow-sm"
         size="lg"
       >
         {isExecuting ? (
@@ -240,7 +297,7 @@ export function RecoveryControls({
             Awaiting action...
           </>
         ) : (
-          normalizedAction === 'create_recovery_payment' ? 'Create Recovery Payment' : `Approve & Run: ${formatActionName(normalizedAction)}`
+          normalizedAction === 'create_recovery_payment' ? 'Create Recovery Payment' : `Execute: ${formatActionName(normalizedAction)}`
         )}
       </Button>
     </div>

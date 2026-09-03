@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { QueueCaseItem } from "@/services/data/queue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatINR, formatActionName, formatCaseType, formatPP } from "@/lib/format";
+import { formatINR, formatActionName, formatCaseType } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { Search, ArrowUpDown, TrendingUp } from "lucide-react";
 
@@ -18,7 +18,7 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
   const [caseTypeFilter, setCaseTypeFilter] = useState("All");
   const [decisionFilter, setDecisionFilter] = useState("All");
   
-  const [sortField, setSortField] = useState<SortField>('expectedNetRecovery');
+  const [sortField, setSortField] = useState<SortField>('expectedRecovery');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const handleSort = (field: SortField) => {
@@ -164,29 +164,24 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead>Customer & Case</TableHead>
-                <TableHead>Type & Cause</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => handleSort('amountAtRisk')}>
                   <div className="flex items-center space-x-1"><span>Amount at Risk</span><ArrowUpDown className="h-3 w-3 text-slate-400" /></div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => handleSort('probability')}>
-                  <div className="flex items-center space-x-1"><span>Estimated Lift</span><ArrowUpDown className="h-3 w-3 text-slate-400" /></div>
+                  <div className="flex items-center space-x-1"><span>Recovery Probability</span><ArrowUpDown className="h-3 w-3 text-slate-400" /></div>
                 </TableHead>
                 <TableHead className="cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => handleSort('expectedRecovery')}>
-                  <div className="flex items-center space-x-1"><span>Expected Value</span><ArrowUpDown className="h-3 w-3 text-slate-400" /></div>
-                </TableHead>
-                <TableHead className="cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => handleSort('expectedNetRecovery')}>
-                  <div className="flex items-center space-x-1"><span className="text-indigo-950 font-bold">Expected Net Value</span><ArrowUpDown className="h-3 w-3 text-indigo-600" /></div>
+                  <div className="flex items-center space-x-1"><span className="text-indigo-950 font-bold">Expected Recovery</span><ArrowUpDown className="h-3 w-3 text-indigo-600" /></div>
                 </TableHead>
                 <TableHead>Decision</TableHead>
-                <TableHead>Policy</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Recommended Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAndSorted.map(c => {
-                const isNetPositive = c.expectedNetRecovery > 0;
                 return (
                   <TableRow 
                     key={c.id} 
@@ -196,11 +191,6 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
                     <TableCell>
                       <div className="font-semibold text-slate-900">{c.customerName}</div>
                       <div className="text-xs text-slate-400 font-mono mt-0.5">{c.id}</div>
-                      <div className="mt-1">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                          {c.provider === 'SIMULATION' ? 'SIMULATION' : 'RAZORPAY'}
-                        </span>
-                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-900">{formatCaseType(c.caseType)}</div>
@@ -209,26 +199,13 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
                     <TableCell className="text-sm font-semibold text-slate-900">
                       {formatINR(c.amountAtRisk)}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-xs font-semibold text-slate-800">
-                        {Math.round(c.baselineProbability * 100)}% → {Math.round(c.probability * 100)}%
-                      </div>
-                      <div className={`text-[11px] font-bold ${c.incrementalLift > 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
-                        {formatPP(c.incrementalLift)} est. lift
-                      </div>
+                    <TableCell className="text-sm font-semibold text-slate-800">
+                      {Math.round(c.probability * 100)}%
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs font-semibold text-slate-700">
+                      <span className="text-sm font-bold text-indigo-600">
                         {formatINR(c.expectedRecovery)}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className={`text-sm font-bold ${isNetPositive ? 'text-emerald-700' : 'text-slate-500'}`}>
-                        {formatINR(c.expectedNetRecovery)}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Cost: ₹{c.estimatedCost}
-                      </div>
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
@@ -236,12 +213,9 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
                         c.decision === 'ABSTAIN' ? 'bg-slate-100 text-slate-700 border-slate-300' :
                         'bg-amber-50 text-amber-800 border-amber-300'
                       }`}>
-                        {c.decision}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-slate-600 font-medium whitespace-nowrap">
-                        {c.policySummary}
+                        {c.decision === 'ACT' ? 'Recovery Action Ready' :
+                         c.decision === 'ABSTAIN' ? 'No Intervention' :
+                         'Manual Review'}
                       </span>
                     </TableCell>
                     <TableCell>

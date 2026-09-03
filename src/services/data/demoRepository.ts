@@ -165,9 +165,9 @@ export class DemoRepository implements RecoveryRepository {
       estimatedInterventionCost: 150,
       expectedNetRecoveryValue: -50,
       decision: 'ABSTAIN',
-      decisionReason: 'The estimated incremental recovery value does not justify the intervention cost.',
+      decisionReason: 'The estimated incremental recovery value does not justify the intervention cost or customer friction.',
       riskLevel: 'Low',
-      recommendedAction: 'create_recovery_payment',
+      recommendedAction: 'no_intervention',
       diagnosis: 'Temporary Payment Failure',
     };
 

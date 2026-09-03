@@ -28,7 +28,8 @@ export function formatActionName(action: string): string {
     'hinglish_recovery_message': 'Hinglish Recovery',
     'manual_review': 'Manual Review',
     'escalate': 'Manual Review',
-    'stop_recovery': 'Stop Recovery'
+    'stop_recovery': 'Stop Recovery',
+    'no_intervention': 'No Intervention'
   };
   return map[action] || action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
@@ -56,6 +57,7 @@ export function formatAuditDescription(description: string): string {
     .replace(/\bhinglish_recovery_message\b/g, 'Hinglish Recovery')
     .replace(/\bmanual_review\b/g, 'Manual Review')
     .replace(/\bstop_recovery\b/g, 'Stop Recovery')
+    .replace(/\bno_intervention\b/g, 'No Intervention')
     .replace(/\bALREADY_PAID\b/g, 'Already Paid')
     .replace(/\bREMIND_LATER\b/g, 'Remind Me Later')
     .replace(/\bPAY_NOW\b/g, 'Pay Now');

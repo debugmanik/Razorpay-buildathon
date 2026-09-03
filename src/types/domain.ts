@@ -15,7 +15,7 @@ export type Currency = 'INR' | 'USD';
 
 export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
 export type CaseStatus = 'detected' | 'analyzing' | 'ready' | 'recovering' | 'recovered' | 'failed' | 'stopped' | 'escalated';
-export type ActionType = 'create_recovery_payment' | 'retry_payment' | 'send_checkout_recovery' | 'retry_subscription' | 'retry_mandate' | 'send_payment_reminder' | 'start_promise_to_pay' | 'hinglish_recovery_message' | 'manual_review' | 'stop_recovery';
+export type ActionType = 'create_recovery_payment' | 'retry_payment' | 'send_checkout_recovery' | 'retry_subscription' | 'retry_mandate' | 'send_payment_reminder' | 'start_promise_to_pay' | 'hinglish_recovery_message' | 'manual_review' | 'stop_recovery' | 'no_intervention';
 export type CaseType = 'payment_failure' | 'checkout_dropoff' | 'subscription_failure' | 'receivable' | 'mandate_failure';
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ActionStatus = 'pending' | 'approved' | 'executing' | 'succeeded' | 'failed' | 'cancelled' | 'blocked';
