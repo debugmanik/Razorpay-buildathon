@@ -8,8 +8,12 @@ An autonomous, policy-bounded revenue operations engine that detects revenue-ris
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
 [![Tests](https://img.shields.io/badge/Tests-59%20Passed%20%7C%2011%20Suites-brightgreen?style=flat)](https://github.com/debugmanik/Razorpay-buildathon)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-recoverx--psi.vercel.app-success?style=flat&logo=vercel)](https://recoverx-psi.vercel.app)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Test%20Mode%20%26%20Simulation-0C2340?style=flat&logo=razorpay)](https://razorpay.com/)
 [![Buildathon](https://img.shields.io/badge/Razorpay%20Buildathon-Track%2003%20%C2%B7%20AI%20Revenue%20Recovery-blueviolet?style=flat)](https://razorpay.com/)
+
+**Live Production Deployment:** [https://recoverx-psi.vercel.app](https://recoverx-psi.vercel.app)  
+**GitHub Repository:** [https://github.com/debugmanik/Razorpay-buildathon.git](https://github.com/debugmanik/Razorpay-buildathon.git)
 
 ---
 
