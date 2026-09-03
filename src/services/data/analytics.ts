@@ -92,7 +92,7 @@ export function getRecoveryImpactMetrics(days: TimeFilter) {
     else if (econ.decision === 'ESCALATE') decisionMix.escalate++;
 
     if (c.status === 'recovered') {
-      totalCohortRecovered += c.amountAtRisk;
+      totalCohortRecovered += (c.actualRecovered ?? c.amountAtRisk);
     }
   });
 
@@ -146,7 +146,7 @@ export function getOpportunityTypeEconomics(days: TimeFilter) {
     groups[type].incrementalRecovery += econ.expectedIncremental;
 
     if (c.status === 'recovered') {
-      groups[type].actualRecovered += c.amountAtRisk;
+      groups[type].actualRecovered += (c.actualRecovered ?? c.amountAtRisk);
     }
   });
 

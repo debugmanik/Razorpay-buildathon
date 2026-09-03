@@ -63,7 +63,7 @@ export function PolicyEditor({ initialPolicy }: Props) {
                   {policy.name}
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Applies to: <span className="font-medium text-slate-700">Revenue Risk Events</span>
+                  Merchant policy constrains what RecoverX is allowed to automate.
                 </CardDescription>
               </div>
               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium">

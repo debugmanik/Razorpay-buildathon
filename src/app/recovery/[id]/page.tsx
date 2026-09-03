@@ -287,8 +287,8 @@ export default async function RecoveryCasePage({ params }: { params: Promise<{ i
                 <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5">
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">Operational Decision Trace</h3>
-                      <p className="text-xs text-slate-500">Rigorous financial evaluation before automated execution.</p>
+                      <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider">Recovery Decision</h3>
+                      <p className="text-xs text-slate-500">Rigorous financial and policy evaluation before automated execution.</p>
                     </div>
                     <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider border ${
                       decision === 'ACT' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
@@ -341,12 +341,18 @@ export default async function RecoveryCasePage({ params }: { params: Promise<{ i
                       </dd>
                     </div>
                     <div className="flex justify-between border-b border-slate-100 pb-2">
+                      <dt className="text-slate-500 text-xs">Policy</dt>
+                      <dd className="font-semibold text-slate-900 text-xs truncate max-w-[200px]" title={caseCtx.policy?.name || 'Standard Guardrail'}>
+                        {caseCtx.policy ? `${caseCtx.policy.name} (Max ${caseCtx.policy.maxAttempts} retries)` : 'Standard Policy'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-2 sm:col-span-2">
                       <dt className="text-slate-500 text-xs">Policy Engine Check</dt>
                       <dd className="text-xs font-semibold">
                         {caseCtx.status === 'stopped' || caseCtx.status === 'escalated' ? (
-                          <span className="text-rose-600">Blocked / Escalated</span>
+                          <span className="text-rose-600">Blocked / Escalated by Merchant Policy</span>
                         ) : (
-                          <span className="text-emerald-600">Approved</span>
+                          <span className="text-emerald-600">Approved by Merchant Policy</span>
                         )}
                       </dd>
                     </div>

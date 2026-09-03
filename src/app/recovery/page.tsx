@@ -16,7 +16,7 @@ export default async function RecoveryQueuePage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Revenue Recovery Queue</h2>
           <p className="text-slate-500 mt-1 text-sm">
-            Prioritize revenue-risk opportunities by expected incremental and net recovery value.
+            Prioritize revenue-risk opportunities by expected recoverable value.
           </p>
         </div>
         

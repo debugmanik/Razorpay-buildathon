@@ -62,15 +62,15 @@ export function RecoveryControls({
   if (decision === 'ABSTAIN') {
     return (
       <div className="rounded-md bg-slate-50 p-5 border border-slate-200">
-        <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+        <div className="flex items-center gap-2 text-slate-800 font-bold text-sm uppercase tracking-wider">
           <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-          Automated Intervention Abstained
+          NO INTERVENTION
         </div>
-        <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-          {decisionReason || 'The estimated incremental recovery value does not justify the intervention cost or customer friction. RecoverX intentionally withholds automated recovery action.'}
+        <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">
+          {decisionReason || 'The estimated incremental recovery value does not justify the intervention cost or customer friction.'}
         </p>
         <div className="mt-3.5 text-xs text-slate-500 bg-white border border-slate-200 rounded p-3">
-          <span className="font-semibold text-slate-700">Financial Rationale:</span> Estimated incremental value is insufficient to cover intervention overhead. Avoiding customer spam protects lifetime value.
+          <span className="font-semibold text-slate-700">Financial Rationale:</span> RecoverX intentionally withholds automated action. The estimated natural recovery probability is high, making intervention overhead economically unviable.
         </div>
       </div>
     );

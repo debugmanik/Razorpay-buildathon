@@ -19,7 +19,7 @@ export default async function SettingsPage() {
       <div className="border-b border-slate-200 pb-6">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Merchant Settings</h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Control center for revenue recovery, policies, and demo configuration.
+          Merchant policy constrains what RecoverX is allowed to automate.
         </p>
       </div>
 

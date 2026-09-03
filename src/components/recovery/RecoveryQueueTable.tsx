@@ -179,6 +179,7 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
                   <div className="flex items-center space-x-1"><span className="text-indigo-950 font-bold">Expected Net Value</span><ArrowUpDown className="h-3 w-3 text-indigo-600" /></div>
                 </TableHead>
                 <TableHead>Decision</TableHead>
+                <TableHead>Policy</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Recommended Action</TableHead>
               </TableRow>
@@ -236,6 +237,11 @@ export function RecoveryQueueTable({ initialCases }: { initialCases: QueueCaseIt
                         'bg-amber-50 text-amber-800 border-amber-300'
                       }`}>
                         {c.decision}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-slate-600 font-medium whitespace-nowrap">
+                        {c.policySummary}
                       </span>
                     </TableCell>
                     <TableCell>

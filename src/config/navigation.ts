@@ -13,7 +13,7 @@ export const navigationConfig = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Recovery Queue',
+    title: 'Revenue Recovery',
     href: '/recovery',
     icon: ListTodo,
   },

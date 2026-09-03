@@ -96,8 +96,8 @@ export class DemoRepository implements RecoveryRepository {
       attemptCount: 0,
       createdAt: new Date(),
       customerHistory: { previousSuccesses: 4, previousFailures: 1 },
-      paymentDetails: { failureReason: 'Temporary network timeout' },
-      metadata: { scenario: 'HERO_PAYMENT_RECOVERY', customerName: 'Aarav Sharma' },
+      paymentDetails: { failureReason: 'Temporary network timeout', paymentId: 'pay_demo_aarav_001' },
+      metadata: { scenario: 'HERO_PAYMENT_RECOVERY', customerName: 'Aarav Sharma', paymentId: 'pay_demo_aarav_001' },
       policy: defaultPolicy,
       
       estimatedBaselineRecoveryProbability: 0.24,
@@ -265,8 +265,8 @@ export class DemoRepository implements RecoveryRepository {
       attemptCount: 1,
       createdAt: new Date(Date.now() - 259200000), // 3 days ago
       customerHistory: { previousSuccesses: 12, previousFailures: 1 },
-      paymentDetails: { failureReason: 'Network timeout' },
-      metadata: { scenario: 'SUBSCRIPTION_RETRY', customerName: 'Amit Singh' },
+      paymentDetails: { failureReason: 'Network timeout', subscriptionId: 'sub_prime_881' },
+      metadata: { scenario: 'SUBSCRIPTION_RETRY', customerName: 'Amit Singh', subscriptionId: 'sub_prime_881' },
       policy: defaultPolicy,
       
       estimatedBaselineRecoveryProbability: 0.35,
@@ -294,7 +294,7 @@ export class DemoRepository implements RecoveryRepository {
       attemptCount: 1,
       createdAt: new Date(Date.now() - 1555200000), // 18 days ago
       customerHistory: { previousSuccesses: 5, previousFailures: 0 },
-      metadata: { scenario: 'B2B_RECEIVABLE', customerName: 'Acme Industries' },
+      metadata: { scenario: 'B2B_RECEIVABLE', customerName: 'Acme Industries', invoiceId: 'inv_b2b_9918', promiseStatus: 'PROMISED' },
       policy: defaultPolicy,
       hasPromiseToPay: true,
       promiseStatus: 'promised',
@@ -313,6 +313,34 @@ export class DemoRepository implements RecoveryRepository {
       recommendedAction: 'start_promise_to_pay',
       diagnosis: 'Overdue Receivable',
       lastActionAt: new Date(Date.now() - 86400000),
+    };
+
+    // 9. Mandate Failure -> Ready (Action Required)
+    this.cases['case_kavita_mandate'] = {
+      id: 'case_kavita_mandate',
+      status: 'ready',
+      type: 'mandate_failure',
+      amountAtRisk: 3499,
+      attemptCount: 0,
+      createdAt: new Date(Date.now() - 3600000), // 1 hr ago
+      customerHistory: { previousSuccesses: 8, previousFailures: 0 },
+      paymentDetails: { failureReason: 'Auto-debit mandate authorization delay', mandateId: 'mandate_sip_442' },
+      metadata: { scenario: 'MANDATE_RETRY', customerName: 'Kavita Iyer', mandateId: 'mandate_sip_442' },
+      policy: defaultPolicy,
+      
+      estimatedBaselineRecoveryProbability: 0.30,
+      baselineRecoveryProbability: 0.30,
+      recoveryProbability: 0.88,
+      incrementalLift: 0.58,
+      expectedRecovery: 3079,
+      expectedIncrementalRecoveryValue: 2029,
+      estimatedInterventionCost: 0,
+      expectedNetRecoveryValue: 2029,
+      decision: 'ACT',
+      decisionReason: 'Estimated incremental recovery value exceeds intervention cost and remains within merchant policy.',
+      riskLevel: 'Low',
+      recommendedAction: 'retry_mandate',
+      diagnosis: 'Mandate Processing Delay',
     };
 
     const now = Date.now();
@@ -383,6 +411,10 @@ export class DemoRepository implements RecoveryRepository {
     this.audits.push({ id: `evt_${now}_30`, caseId: 'case_acme_b2b', eventType: 'ACTION_EXECUTED', description: 'Executed: Start Promise to Pay', createdAt: new Date(now - 86400000) });
     this.audits.push({ id: `evt_${now}_31`, caseId: 'case_acme_b2b', eventType: 'PROMISE_TO_PAY_CREATED', description: 'Customer promise to pay recorded.', createdAt: new Date(now - 86390000) });
     this.actions.push({ id: `act_${now}_5`, caseId: 'case_acme_b2b', type: 'start_promise_to_pay', attempt: 1, status: 'succeeded', amountRecovered: 0, createdAt: new Date(now - 86400000) });
+
+    // Audits for Mandate Failure (Kavita)
+    this.audits.push({ id: `evt_${now}_32`, caseId: 'case_kavita_mandate', eventType: 'RECOVERY_DETECTED', description: 'Mandate failure detected for ₹3,499', createdAt: new Date(now - 3600000) });
+    this.audits.push({ id: `evt_${now}_33`, caseId: 'case_kavita_mandate', eventType: 'INTERVENTION_RECOMMENDED', description: 'Recommended Intervention: Retry Mandate', createdAt: new Date(now - 3500000) });
   }
 
   async getCaseContext(caseId: string): Promise<FullCaseContext | null> {

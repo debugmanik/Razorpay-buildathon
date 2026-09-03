@@ -20,13 +20,19 @@ export async function searchCasesAction(query: string): Promise<SearchResult[]> 
   
   for (const caseData of Object.values(demoRepo.cases)) {
     const customerName = (caseData.metadata?.customerName as string) || '';
-    const paymentId = (caseData.metadata?.paymentId as string) || '';
+    const paymentId = (caseData.metadata?.paymentId as string) || (caseData.paymentDetails?.paymentId as string) || '';
+    const invoiceId = (caseData.metadata?.invoiceId as string) || (caseData.paymentDetails?.invoiceId as string) || '';
+    const subscriptionId = (caseData.metadata?.subscriptionId as string) || (caseData.paymentDetails?.subscriptionId as string) || '';
+    const mandateId = (caseData.metadata?.mandateId as string) || (caseData.paymentDetails?.mandateId as string) || '';
     const caseId = caseData.id;
 
     if (
       customerName.toLowerCase().includes(normalizedQuery) ||
       caseId.toLowerCase().includes(normalizedQuery) ||
-      paymentId.toLowerCase().includes(normalizedQuery)
+      paymentId.toLowerCase().includes(normalizedQuery) ||
+      invoiceId.toLowerCase().includes(normalizedQuery) ||
+      subscriptionId.toLowerCase().includes(normalizedQuery) ||
+      mandateId.toLowerCase().includes(normalizedQuery)
     ) {
       results.push({
         id: caseId,

@@ -2,6 +2,7 @@ import { demoRepo } from '@/services/data/demoRepository';
 import { calculateRecoveryScore } from '@/services/engine/scoring';
 import { diagnoseCase } from '@/services/engine/diagnosis';
 import { selectIntervention, ESTIMATED_INTERVENTION_COSTS } from '@/services/engine/intervention';
+import { getRecoveryImpactMetrics } from '@/services/data/analytics';
 import { CaseStatus, RecoveryDecision } from '@/types/domain';
 
 export type QueueCaseItem = {
@@ -19,6 +20,7 @@ export type QueueCaseItem = {
   expectedNetRecovery: number; // Expected Net Recovery Value
   decision: RecoveryDecision; // ACT | ABSTAIN | ESCALATE
   decisionReason: string;
+  policySummary: string;
   priority: 'High' | 'Medium' | 'Low';
   provider: 'RAZORPAY TEST MODE' | 'SIMULATION';
   status: CaseStatus;
@@ -144,6 +146,7 @@ export async function getQueueData(): Promise<{ cases: QueueCaseItem[], metrics:
       expectedNetRecovery: netRecovery,
       decision,
       decisionReason,
+      policySummary: c.policy ? `Max ${c.policy.maxAttempts} retries · ₹${(c.policy.escalationThreshold / 1000).toFixed(0)}k cap` : 'Standard Guardrails',
       priority,
       provider,
       status: c.status,
@@ -167,11 +170,9 @@ export async function getQueueData(): Promise<{ cases: QueueCaseItem[], metrics:
     }
   }
 
-  // Calculate recovered revenue from actions
-  const actions = demoRepo.actions.filter(a => a.status === 'succeeded' && a.amountRecovered > 0);
-  actions.forEach(a => {
-    recoveredRevenue += a.amountRecovered;
-  });
+  // Reconciled financial source of truth
+  const impact = getRecoveryImpactMetrics('all');
+  recoveredRevenue = impact.recoveredRevenue;
 
   // Pre-sort by Expected Net Recovery DESC (Best Recovery Opportunity)
   cases.sort((a, b) => b.expectedNetRecovery - a.expectedNetRecovery);

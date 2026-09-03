@@ -16,9 +16,14 @@ export type FullCaseContext = {
   hasPromiseToPay?: boolean;
   promiseStatus?: PromiseStatus;
   metadata?: Record<string, unknown>;
+  actualRecovered?: number;
   paymentDetails?: {
     failureReason?: string | null;
     method?: string | null;
+    paymentId?: string | null;
+    invoiceId?: string | null;
+    subscriptionId?: string | null;
+    mandateId?: string | null;
   };
   customerHistory: {
     previousSuccesses: number;

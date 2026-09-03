@@ -46,59 +46,75 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 1 — FINANCIAL SUMMARY */}
-      {/* SECTION 1 — FINANCIAL SUMMARY */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Revenue at Risk</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-slate-400" />
+      {/* SECTION 1 — FINANCIAL & OPERATIONAL SUMMARY */}
+      <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <Card className="shadow-2xs border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-slate-600">Revenue at Risk</CardTitle>
+            <ShieldAlert className="h-3.5 w-3.5 text-slate-400" />
           </CardHeader>
-          <CardContent>
-            {metrics.revenueAtRisk === 0 ? (
-              <div className="text-2xl font-bold text-slate-900">₹0</div>
-            ) : (
-              <div className="text-2xl font-bold text-slate-900">{formatINR(metrics.revenueAtRisk, true)}</div>
-            )}
-            <p className="text-[11px] text-slate-400 mt-1">{metrics.activeCases} active recovery cases</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-slate-900">{formatINR(metrics.revenueAtRisk, true)}</div>
+            <p className="text-[10px] text-slate-500 mt-0.5">Unrecovered exposure</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Expected Incremental Recovery</CardTitle>
-            <TrendingUp className="h-4 w-4 text-indigo-500" />
+
+        <Card className="shadow-2xs border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-slate-600">Expected Recovery</CardTitle>
+            <TrendingUp className="h-3.5 w-3.5 text-slate-400" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-indigo-600">
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-slate-700">{formatINR(metrics.expectedRecovery, true)}</div>
+            <p className="text-[10px] text-slate-500 mt-0.5">Gross expectation</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-2xs border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-slate-600">Expected Incremental</CardTitle>
+            <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-indigo-600">
               {formatINR(metrics.expectedIncrementalRecoveryValue || metrics.expectedRecovery, true)}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Lift above natural baseline</p>
+            <p className="text-[10px] text-indigo-600/70 mt-0.5">Lift above baseline</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Expected Net Recovery Value</CardTitle>
-            <Activity className="h-4 w-4 text-emerald-600" />
+
+        <Card className="shadow-2xs border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-slate-600">Expected Net Value</CardTitle>
+            <Activity className="h-3.5 w-3.5 text-emerald-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-emerald-700">
               {formatINR(metrics.expectedNetRecoveryValue || metrics.expectedRecovery, true)}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Net of estimated intervention costs</p>
+            <p className="text-[10px] text-emerald-600/70 mt-0.5">Net of intervention costs</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Actual Recovered Revenue</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+
+        <Card className="shadow-2xs border-slate-200 bg-emerald-50/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-emerald-800">Actual Recovered</CardTitle>
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
           </CardHeader>
-          <CardContent>
-            {metrics.recoveredRevenue === 0 ? (
-              <div className="text-xl font-medium text-slate-900">₹0</div>
-            ) : (
-              <div className="text-2xl font-bold text-emerald-700">{formatINR(metrics.recoveredRevenue, true)}</div>
-            )}
-            <p className="text-[11px] text-emerald-600 font-medium mt-1">Confirmed captured payments</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-emerald-700">{formatINR(metrics.recoveredRevenue, true)}</div>
+            <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Confirmed captured funds</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-2xs border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-4">
+            <CardTitle className="text-xs font-medium text-slate-600">Active Opportunities</CardTitle>
+            <Activity className="h-3.5 w-3.5 text-slate-400" />
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl font-bold text-slate-900">{metrics.activeCases}</div>
+            <p className="text-[10px] text-slate-500 mt-0.5">In recovery lifecycle</p>
           </CardContent>
         </Card>
       </div>
