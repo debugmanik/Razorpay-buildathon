@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Merchant {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  currency         String            @default("INR")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  customers        Customer[]
+  payments         Payment[]
+  recoveryCases    RecoveryCase[]
+  recoveryPolicies RecoveryPolicy[]
+  checkoutSessions CheckoutSession[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  auditEvents      AuditEvent[]
+}
+
+model Customer {
+  id               String            @id @default(cuid())
+  merchantId       String
+  merchant         Merchant          @relation(fields: [merchantId], references: [id])
+  name             String
+  email            String?
+  phone            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  payments         Payment[]
+  recoveryCases    RecoveryCase[]
+  checkoutSessions CheckoutSession[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+
+  @@index([merchantId])
+}
+
+model Payment {
+  id                String         @id @default(cuid())
+  merchantId        String
+  merchant          Merchant       @relation(fields: [merchantId], references: [id])
+  customerId        String
+  customer          Customer       @relation(fields: [customerId], references: [id])
+  amount            Float
+  currency          String         @default("INR")
+  status            String // pending, authorized, captured, failed, refunded
+  paymentMethod     String?
+  failureCode       String?
+  failureReason     String?
+  providerPaymentId String?
+  attemptNumber     Int            @default(1)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  recoveryCases     RecoveryCase[]
+
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model RecoveryCase {
+  id                  String           @id @default(cuid())
+  merchantId          String
+  merchant            Merchant         @relation(fields: [merchantId], references: [id])
+  customerId          String
+  customer            Customer         @relation(fields: [customerId], references: [id])
+  paymentId           String?
+  payment             Payment?         @relation(fields: [paymentId], references: [id])
+  checkoutSessionId   String?
+  subscriptionId      String?
+  invoiceId           String?
+  type                String // payment_failure, checkout_abandonment, subscription_failure, receivable, mandate_failure
+  status              String // detected, analyzing, ready, recovering, recovered, failed, stopped, escalated
+  riskLevel           String // low, medium, high, critical
+  recoveryProbability Float // 0 to 1
+  expectedRecovery    Float
+  amountAtRisk        Float
+  recommendedAction   String?
+  currentStep         Int              @default(0)
+  attemptCount        Int              @default(0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  resolvedAt          DateTime?
+  actions             RecoveryAction[]
+  auditEvents         AuditEvent[]
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([type])
+}
+
+model RecoveryPolicy {
+  id                  String           @id @default(cuid())
+  merchantId          String
+  merchant            Merchant         @relation(fields: [merchantId], references: [id])
+  name                String
+  caseType            String
+  maxAttempts         Int
+  cooldownMinutes     Int
+  recoveryWindowHours Int
+  escalationThreshold Float
+  enabled             Boolean          @default(true)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  actions             RecoveryAction[]
+
+  @@index([merchantId])
+}
+
+model RecoveryAction {
+  id              String          @id @default(cuid())
+  recoveryCaseId  String
+  recoveryCase    RecoveryCase    @relation(fields: [recoveryCaseId], references: [id])
+  policyId        String?
+  policy          RecoveryPolicy? @relation(fields: [policyId], references: [id])
+  type            String // retry_payment, payment_method_switch, checkout_reminder, subscription_retry, receivable_reminder, promise_to_pay, escalate
+  status          String // pending, approved, executing, succeeded, failed, cancelled, blocked
+  attemptNumber   Int
+  scheduledAt     DateTime?
+  executedAt      DateTime?
+  completedAt     DateTime?
+  result          String?
+  amountRecovered Float           @default(0)
+  createdAt       DateTime        @default(now())
+
+  @@index([recoveryCaseId])
+  @@index([status])
+}
+
+model AuditEvent {
+  id             String        @id @default(cuid())
+  merchantId     String
+  merchant       Merchant      @relation(fields: [merchantId], references: [id])
+  recoveryCaseId String?
+  recoveryCase   RecoveryCase? @relation(fields: [recoveryCaseId], references: [id])
+  actionId       String?
+  eventType      String
+  description    String
+  actor          String
+  metadata       String? // JSON stringified
+  createdAt      DateTime      @default(now())
+
+  @@index([merchantId])
+  @@index([recoveryCaseId])
+}
+
+model CheckoutSession {
+  id             String    @id @default(cuid())
+  merchantId     String
+  merchant       Merchant  @relation(fields: [merchantId], references: [id])
+  customerId     String
+  customer       Customer  @relation(fields: [customerId], references: [id])
+  amount         Float
+  currency       String    @default("INR")
+  status         String // created, payment_started, completed, abandoned, expired
+  abandonedAt    DateTime?
+  recoveryCaseId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Subscription {
+  id                     String    @id @default(cuid())
+  merchantId             String
+  merchant               Merchant  @relation(fields: [merchantId], references: [id])
+  customerId             String
+  customer               Customer  @relation(fields: [customerId], references: [id])
+  amount                 Float
+  currency               String    @default("INR")
+  status                 String // active, past_due, paused, cancelled
+  nextBillingAt          DateTime?
+  failedAttempts         Int       @default(0)
+  providerSubscriptionId String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Invoice {
+  id               String    @id @default(cuid())
+  merchantId       String
+  merchant         Merchant  @relation(fields: [merchantId], references: [id])
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  amount           Float
+  currency         String    @default("INR")
+  status           String // draft, issued, due, overdue, promised, paid, escalated
+  dueDate          DateTime?
+  paidAt           DateTime?
+  overdueDays      Int       @default(0)
+  promiseToPayDate DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([merchantId])
+  @@index([customerId])
+  @@index([status])
+}
