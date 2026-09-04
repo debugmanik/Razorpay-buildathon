@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'RecoverX - Revenue Recovery',
-  description: 'Find revenue that is slipping away. Win it back.',
+  description: 'Recover revenue before it becomes lost revenue.',
 };
 
 export default function RootLayout({

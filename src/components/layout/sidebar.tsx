@@ -46,7 +46,7 @@ export function Sidebar() {
       </nav>
       
       <div className="p-4 border-t flex flex-col gap-3">
-        <p className="text-xs text-muted-foreground">Find revenue that&apos;s slipping away. Win it back.</p>
+        <p className="text-xs text-muted-foreground">Recover revenue before it becomes lost revenue.</p>
         <ResetDemoButton />
       </div>
     </aside>

@@ -36,7 +36,7 @@ export default async function DashboardPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Overview</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Recover revenue before it becomes lost revenue.</h2>
           <p className="text-slate-500 mt-1 max-w-2xl text-sm">Monitor revenue at risk and active recovery operations.</p>
         </div>
         <div className="flex items-center">
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
           <Card className="shadow-sm border-slate-200">
             <CardHeader>
               <CardTitle className="text-lg">Recovery Performance</CardTitle>
-              <CardDescription>Risk vs Expected vs Recovered over the last 7 days.</CardDescription>
+              <CardDescription>Revenue at risk, expected recovery, and verified recovered revenue across the current recovery batch.</CardDescription>
             </CardHeader>
             <CardContent>
               {trendData.every(d => d.revenueAtRisk === 0 && d.recovered === 0) ? (
