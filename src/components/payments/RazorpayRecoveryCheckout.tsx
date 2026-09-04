@@ -69,6 +69,33 @@ export function RazorpayRecoveryCheckout({
         order_id: orderId,
         name: 'RecoverX Recovery Payment',
         description: 'Recovery Payment',
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay using UPI',
+                instruments: [
+                  {
+                    method: 'upi',
+                    flows: ['qr', 'intent'],
+                  },
+                ],
+              },
+              other: {
+                name: 'Cards, Netbanking & Wallets',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' },
+                ],
+              },
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
         handler: async function (response: { razorpay_payment_id?: string }) {
           setMessage('Payment submitted — confirming recovery...');
           if (caseId) {

@@ -29,6 +29,33 @@ export function RazorpayTestCheckout({ buttonText }: { buttonText?: string }) {
         order_id: data.order_id,
         name: 'RecoverX Test',
         description: 'Developer Verification Checkout',
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay using UPI',
+                instruments: [
+                  {
+                    method: 'upi',
+                    flows: ['qr', 'intent'],
+                  },
+                ],
+              },
+              other: {
+                name: 'Cards, Netbanking & Wallets',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' },
+                ],
+              },
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
         handler: function () {
           setMessage('Payment submitted — waiting for Razorpay confirmation via webhook.');
         },
