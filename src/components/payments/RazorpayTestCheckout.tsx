@@ -29,6 +29,11 @@ export function RazorpayTestCheckout({ buttonText }: { buttonText?: string }) {
         order_id: data.order_id,
         name: 'RecoverX Test',
         description: 'Developer Verification Checkout',
+        prefill: {
+          name: 'Test Customer',
+          contact: '9876543210',
+          email: 'test@example.com',
+        },
         config: {
           display: {
             blocks: {
@@ -37,7 +42,6 @@ export function RazorpayTestCheckout({ buttonText }: { buttonText?: string }) {
                 instruments: [
                   {
                     method: 'upi',
-                    flows: ['qr', 'intent'],
                   },
                 ],
               },
@@ -52,7 +56,7 @@ export function RazorpayTestCheckout({ buttonText }: { buttonText?: string }) {
             },
             sequence: ['block.upi', 'block.other'],
             preferences: {
-              show_default_blocks: true,
+              show_default_blocks: false,
             },
           },
         },

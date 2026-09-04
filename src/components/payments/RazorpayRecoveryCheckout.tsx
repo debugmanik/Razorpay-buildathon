@@ -69,6 +69,11 @@ export function RazorpayRecoveryCheckout({
         order_id: orderId,
         name: 'RecoverX Recovery Payment',
         description: 'Recovery Payment',
+        prefill: {
+          name: 'Aarav Sharma',
+          contact: '9876543210',
+          email: 'aarav.sharma@example.com',
+        },
         config: {
           display: {
             blocks: {
@@ -77,7 +82,6 @@ export function RazorpayRecoveryCheckout({
                 instruments: [
                   {
                     method: 'upi',
-                    flows: ['qr', 'intent'],
                   },
                 ],
               },
@@ -92,7 +96,7 @@ export function RazorpayRecoveryCheckout({
             },
             sequence: ['block.upi', 'block.other'],
             preferences: {
-              show_default_blocks: true,
+              show_default_blocks: false,
             },
           },
         },
